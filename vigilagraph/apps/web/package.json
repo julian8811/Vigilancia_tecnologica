@@ -1,0 +1,47 @@
+{
+  "name": "vigilagraph-web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.9",
+    "@radix-ui/react-dialog": "^1.1",
+    "@radix-ui/react-dropdown-menu": "^2.1",
+    "@radix-ui/react-label": "^2.1",
+    "@radix-ui/react-select": "^2.1",
+    "@radix-ui/react-separator": "^1.1",
+    "@radix-ui/react-slot": "^1.1",
+    "@radix-ui/react-toast": "^1.2",
+    "@radix-ui/react-tooltip": "^1.1",
+    "@tanstack/react-query": "^5.62",
+    "@tanstack/react-table": "^8.20",
+    "class-variance-authority": "^0.7",
+    "clsx": "^2.1",
+    "cytoscape": "^3.30",
+    "lucide-react": "^0.460",
+    "next": "14.2",
+    "react": "^18.3",
+    "react-dom": "^18.3",
+    "react-hook-form": "^7.54",
+    "sonner": "^1.7",
+    "tailwind-merge": "^2.6",
+    "tailwindcss-animate": "^1.0",
+    "zod": "^3.24"
+  },
+  "devDependencies": {
+    "@types/cytoscape": "^3.21",
+    "@types/node": "^20",
+    "@types/react": "^18.3",
+    "@types/react-dom": "^18.3",
+    "autoprefixer": "^10.4",
+    "postcss": "^8.4",
+    "tailwindcss": "^3.4",
+    "typescript": "^5.7"
+  }
+}

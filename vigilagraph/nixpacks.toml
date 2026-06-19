@@ -1,0 +1,10 @@
+[phases.setup]
+nixPkgs = ["python311", "nodejs_20", "uv", "graphifyy"]
+
+[phases.install]
+cmds = [
+  "uv tool install graphifyy",
+]
+
+[deploy]
+startCommand = ""

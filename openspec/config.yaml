@@ -1,0 +1,77 @@
+# OpenSpec Configuration — VigilaGraph IA
+project: VigilaGraph IA
+repo: vigilancia
+created: 2026-06-18
+artifact_store: hybrid
+
+context: |
+  VigilaGraph IA — AI-powered surveillance analysis platform.
+  Python/FastAPI backend with SQLAlchemy 2 + Alembic, Celery+Redis task queue.
+  Next.js 14+ (App Router) frontend with TypeScript, shadcn/ui, TanStack Query,
+  Cytoscape.js for graph visualization. PostgreSQL + pgvector for embeddings,
+  MinIO/Railway Buckets for S3 storage. Deployed on Railway.app.
+
+stack:
+  backend:
+    language: Python 3.12+
+    framework: FastAPI
+    orm: SQLAlchemy 2 + Alembic
+    validation: Pydantic v2
+    task_queue: Celery + Redis/Valkey
+  frontend:
+    framework: Next.js 14+ (App Router)
+    language: TypeScript
+    styling: Tailwind CSS
+    ui_library: shadcn/ui
+    state_query: TanStack Query
+    table: TanStack Table
+    forms: React Hook Form + Zod
+    graph: Cytoscape.js
+    icons: Lucide React
+    toast: Sonner
+  database:
+    primary: PostgreSQL
+    vector: pgvector
+    cache_queue: Redis/Valkey
+    storage: MinIO / Railway Buckets (S3-compatible)
+  infrastructure:
+    platform: Railway.app
+    graph_tool: Graphify (uv tool install graphifyy)
+
+testing:
+  strict_tdd: false
+  reason: "No test runner detected — project workspace is empty. Configure test runners (pytest + pytest-asyncio for backend, Vitest + Testing Library + Playwright for frontend) before enabling Strict TDD Mode."
+  capabilities:
+    backend:
+      runner: pytest + pytest-asyncio
+      coverage: pytest-cov
+      layers:
+        unit: true
+        integration: true
+        e2e: false
+    frontend:
+      runner: Vitest + Testing Library
+      coverage: vitest --coverage
+      e2e: Playwright
+      layers:
+        unit: true
+        integration: true
+        e2e: true
+
+strict_tdd: false
+
+phase_rules:
+  proposal:
+    require_approval: true
+  spec:
+    require_approval: true
+  design:
+    require_approval: true
+  tasks:
+    require_approval: false
+  apply:
+    require_approval: false
+  verify:
+    require_approval: false
+  archive:
+    require_approval: false
