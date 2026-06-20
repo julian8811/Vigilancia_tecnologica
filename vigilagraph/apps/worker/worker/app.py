@@ -17,6 +17,7 @@ app = Celery(
     backend=RESULT_BACKEND,
     include=[
         "worker.tasks",
+        "worker.tasks.collection_tasks",
         "worker.graphify.adapter",
     ],
 )
