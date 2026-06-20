@@ -34,6 +34,10 @@ class Document(Base):
     url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     doi: Mapped[str | None] = mapped_column(String(500), nullable=True)
     source_id: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="External ID from OpenAlex / Semantic Scholar / Lens")
+    source_name: Mapped[str] = mapped_column(
+        String(50), server_default="manual_upload", nullable=False,
+        comment="manual_upload | openalex | semantic_scholar | lens | web",
+    )
     abstract: Mapped[str | None] = mapped_column(Text, nullable=True)
     authors: Mapped[list | None] = mapped_column(JSONB, nullable=True, default=list, comment="List of author strings")
     institutions: Mapped[list | None] = mapped_column(JSONB, nullable=True, default=list, comment="List of institution strings")

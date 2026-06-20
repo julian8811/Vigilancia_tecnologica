@@ -60,6 +60,9 @@ class SurveillanceProject(Base):
     graph_runs: Mapped[list["GraphRun"]] = relationship(
         "GraphRun", back_populates="project", cascade="all, delete-orphan", lazy="selectin",
     )
+    collection_runs: Mapped[list["CollectionRun"]] = relationship(
+        "CollectionRun", back_populates="project", cascade="all, delete-orphan", lazy="selectin",
+    )
 
     __table_args__ = (
         # Per-organisation unique slugs

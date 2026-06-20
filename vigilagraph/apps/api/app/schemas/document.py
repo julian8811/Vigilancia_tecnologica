@@ -52,6 +52,7 @@ class DocumentResponse(BaseModel):
     url: str | None = None
     doi: str | None = None
     source_id: str | None = None
+    source_name: str = "manual_upload"
     abstract: str | None = None
     authors: list[str] | None = None
     institutions: list[str] | None = None

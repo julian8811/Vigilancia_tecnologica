@@ -12,6 +12,7 @@ from app.schemas.graph import GraphRunResponse, GraphRunListResponse, GraphNodeR
 from app.schemas.analysis import TechnologyResponse, TrendResponse, ActorResponse, OpportunityResponse, AnalysisRunResponse
 from app.schemas.report import ReportCreate, ReportResponse, ReportListResponse
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, ChangePasswordRequest
+from app.schemas.collection_run import CollectionRunResponse, CollectionRunListResponse
 
 __all__ = [
     "OrganizationCreate", "OrganizationUpdate", "OrganizationResponse",
@@ -28,4 +29,5 @@ __all__ = [
     "AnalysisRunResponse",
     "ReportCreate", "ReportResponse", "ReportListResponse",
     "RegisterRequest", "LoginRequest", "TokenResponse", "ChangePasswordRequest",
+    "CollectionRunResponse", "CollectionRunListResponse",
 ]
