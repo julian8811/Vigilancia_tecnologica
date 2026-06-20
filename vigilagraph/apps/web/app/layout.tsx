@@ -1,31 +1,25 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { Toaster } from "sonner";
 import "./globals.css";
+import { Providers } from "./providers";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "VigilaGraph IA — Technology Surveillance",
-  description:
-    "AI-powered platform for monitoring, analysing, and visualising technology landscapes.",
+  title: "VigilaGraph IA",
+  description: "Vigilancia Tecnológica con IA",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body>
+    <html lang="es" suppressHydrationWarning>
+      <body className={inter.className}>
         <Providers>{children}</Providers>
-        <Toaster richColors position="top-right" />
       </body>
     </html>
   );
-}
-
-function Providers({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
 }

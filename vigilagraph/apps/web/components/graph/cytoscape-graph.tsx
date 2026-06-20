@@ -1,0 +1,211 @@
+"use client";
+
+import {
+  useEffect,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+  useCallback,
+} from "react";
+import cytoscape from "cytoscape";
+import type { GraphNode, GraphEdge } from "@/types/api";
+import { elementsToCyData, communityColor, getNodeTypeColor } from "@/lib/graph-utils";
+
+// Try to load dagre layout — will use fallback if unavailable
+let dagre: any = null;
+try {
+  dagre = require("cytoscape-dagre");
+  cytoscape.use(dagre);
+} catch {
+  // dagre not available, fall back to cose
+}
+
+export interface CytoscapeGraphHandle {
+  zoomToNode: (nodeId: string) => void;
+  fitToScreen: () => void;
+}
+
+interface CytoscapeGraphProps {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  onNodeSelect: (nodeId: string) => void;
+  onNodeDeselect: () => void;
+}
+
+export const CytoscapeGraph = forwardRef<
+  CytoscapeGraphHandle,
+  CytoscapeGraphProps
+>(({ nodes, edges, onNodeSelect, onNodeDeselect }, ref) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cyRef = useRef<cytoscape.Core | null>(null);
+
+  // Expose imperative methods
+  useImperativeHandle(ref, () => ({
+    zoomToNode(nodeId: string) {
+      const cy = cyRef.current;
+      if (!cy) return;
+      const el = cy.getElementById(nodeId);
+      if (el.length) {
+        cy.fit(el, 100);
+        cy.animate({
+          duration: 400,
+        } as any);
+        cy.nodes().unselect();
+        el.select();
+      }
+    },
+    fitToScreen() {
+      cyRef.current?.fit(undefined, 50);
+    },
+  }));
+
+  // Build the graph
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // Destroy previous instance
+    if (cyRef.current) {
+      cyRef.current.destroy();
+      cyRef.current = null;
+    }
+
+    const elements = elementsToCyData(nodes, edges);
+
+    // Build node type → color map for style
+    const nodeTypes = Array.from(new Set(nodes.map((n) => n.node_type)));
+    const communities = Array.from(
+      new Set(
+        nodes
+          .map((n) => n.community)
+          .filter((c): c is number => c !== undefined && c !== null),
+      ),
+    );
+
+    const cy = cytoscape({
+      container: containerRef.current,
+      elements,
+      style: [
+        // Node defaults
+        {
+          selector: "node",
+          style: {
+            "background-color": "#6366f1",
+            label: "data(label)",
+            "font-size": "10px",
+            "text-wrap": "wrap",
+            "text-max-width": "120px",
+            "text-valign": "bottom",
+            "text-halign": "center",
+            color: "#888",
+            "border-width": 0,
+            width: "mapData(centrality, 0, 1, 20, 60)",
+            height: "mapData(centrality, 0, 1, 20, 60)",
+            "transition-property":
+              "background-color, border-color, width, height",
+            "transition-duration": 200,
+          } as any,
+        },
+        // Node type colors
+        ...nodeTypes.map((type) => ({
+          selector: `node[nodeType = "${type}"]`,
+          style: {
+            "background-color": getNodeTypeColor(type),
+          } as any,
+        })),
+        // Community border colors
+        ...communities.map((c) => ({
+          selector: `node[community = ${c}]`,
+          style: {
+            "border-color": communityColor(c),
+            "border-width": 3,
+            "border-opacity": 0.6,
+          } as any,
+        })),
+        // Edge defaults
+        {
+          selector: "edge",
+          style: {
+            width: "mapData(weight, 0, 1, 1, 4)",
+            "line-color": "#555",
+            "target-arrow-color": "#555",
+            "target-arrow-shape": "triangle",
+            "curve-style": "bezier",
+            opacity: 0.6,
+          } as any,
+        },
+        // Selected node
+        {
+          selector: "node:selected",
+          style: {
+            "border-width": 4,
+            "border-color": "#fff",
+            "shadow-blur": 20,
+            "shadow-color": "#fff",
+            "shadow-opacity": 0.5,
+          } as any,
+        },
+        // Selected edge
+        {
+          selector: "edge:selected",
+          style: {
+            "line-color": "#fff",
+            "target-arrow-color": "#fff",
+            width: 3,
+            opacity: 1,
+          } as any,
+        },
+      ],
+      layout: {
+        name: dagre ? "dagre" : "cose",
+        animate: true,
+        animationDuration: 500,
+        ...(dagre
+          ? {
+              rankDir: "LR",
+              spacingFactor: 1.5,
+              nodeSep: 60,
+              rankSep: 100,
+            }
+          : {
+              nodeRepulsion: () => 8000,
+              idealEdgeLength: () => 120,
+              gravity: 0.3,
+            }),
+      } as any,
+      wheelSensitivity: 0.3,
+      minZoom: 0.1,
+      maxZoom: 4,
+    });
+
+    cyRef.current = cy;
+
+    // Node click handler
+    cy.on("tap", "node", (evt) => {
+      const nodeId = evt.target.id();
+      onNodeSelect(nodeId);
+    });
+
+    // Background click → deselect
+    cy.on("tap", (evt) => {
+      if (evt.target === cy) {
+        cy.nodes().unselect();
+        onNodeDeselect();
+      }
+    });
+
+    return () => {
+      cy.destroy();
+      cyRef.current = null;
+    };
+  }, [nodes, edges, onNodeSelect, onNodeDeselect]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="h-full w-full"
+      style={{ minHeight: "400px" }}
+    />
+  );
+});
+
+CytoscapeGraph.displayName = "CytoscapeGraph";

@@ -1,15 +1,16 @@
 /**
  * Thin fetch wrapper with built-in auth token handling.
  *
- * This will be expanded as the auth system is built out.
- * For now it provides a typed fetch interface for the API.
+ * Provides typed fetch interface for the API with automatic
+ * auth token injection and form-data support.
  */
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-interface ApiOptions extends Omit<RequestInit, "headers"> {
+interface ApiOptions extends Omit<RequestInit, "headers" | "body"> {
   headers?: Record<string, string>;
   token?: string;
+  body?: unknown;
 }
 
 interface ApiError {
@@ -29,24 +30,48 @@ export class ApiClientError extends Error {
   }
 }
 
+let defaultToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  defaultToken = token;
+}
+
+export function getAuthToken(): string | null {
+  return defaultToken;
+}
+
 async function request<T>(
   endpoint: string,
   options: ApiOptions = {},
 ): Promise<T> {
-  const { token, headers: extraHeaders, ...fetchOptions } = options;
+  const { token: explicitToken, headers: extraHeaders, body, ...fetchOptions } = options;
+  const token = explicitToken || defaultToken;
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...extraHeaders,
   };
+
+  // Only set default Content-Type if not already set (e.g. for form data)
+  if (!headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
+  // Pass string bodies directly (for URLSearchParams etc.), JSON-stringify objects
+  const fetchBody =
+    body !== undefined
+      ? typeof body === "string"
+        ? body
+        : JSON.stringify(body)
+      : undefined;
+
   const response = await fetch(`${BASE_URL}/api${endpoint}`, {
     ...fetchOptions,
     headers,
+    body: fetchBody,
   });
 
   if (!response.ok) {
@@ -63,19 +88,11 @@ export const api = {
   get<T>(endpoint: string, options?: ApiOptions) {
     return request<T>(endpoint, { ...options, method: "GET" });
   },
-  post<T>(endpoint: string, body: unknown, options?: ApiOptions) {
-    return request<T>(endpoint, {
-      ...options,
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+  post<T>(endpoint: string, body?: unknown, options?: ApiOptions) {
+    return request<T>(endpoint, { ...options, method: "POST", body });
   },
-  put<T>(endpoint: string, body: unknown, options?: ApiOptions) {
-    return request<T>(endpoint, {
-      ...options,
-      method: "PUT",
-      body: JSON.stringify(body),
-    });
+  put<T>(endpoint: string, body?: unknown, options?: ApiOptions) {
+    return request<T>(endpoint, { ...options, method: "PUT", body });
   },
   delete<T>(endpoint: string, options?: ApiOptions) {
     return request<T>(endpoint, { ...options, method: "DELETE" });
