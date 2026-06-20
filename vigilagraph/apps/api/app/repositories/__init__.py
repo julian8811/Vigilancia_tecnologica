@@ -8,6 +8,7 @@ from app.repositories.project_repository import ProjectRepository
 from app.repositories.search_strategy_repository import SearchStrategyRepository
 from app.repositories.document_repository import DocumentRepository
 from app.repositories.organization_repository import OrganizationRepository
+from app.repositories.collection_run_repository import CollectionRunRepository
 from app.repositories.graph_repository import GraphRunRepository, GraphNodeRepository, GraphEdgeRepository
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     "SearchStrategyRepository",
     "DocumentRepository",
     "OrganizationRepository",
+    "CollectionRunRepository",
     "GraphRunRepository",
     "GraphNodeRepository",
     "GraphEdgeRepository",

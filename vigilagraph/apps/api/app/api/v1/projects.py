@@ -5,15 +5,23 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
 from app.api.deps import get_current_active_user, get_db
 from app.models.user import User
+from app.repositories.collection_run_repository import CollectionRunRepository
+from app.schemas.collection_run import CollectionRunListResponse
 from app.schemas.project import ProjectCreate, ProjectListResponse, ProjectResponse, ProjectUpdate
 from app.schemas.search_strategy import SearchStrategyResponse, SearchStrategyUpdate
 from app.services.project_service import ProjectService
 from app.services.search_strategy_service import SearchStrategyService
+
+
+class StatusTransitionRequest(BaseModel):
+    """Request body for transitioning project status."""
+    status: str
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -122,14 +130,32 @@ async def archive_project(
 @router.post("/{project_id}/status", response_model=ProjectResponse)
 async def transition_project_status(
     project_id: uuid.UUID,
-    new_status: str = Query(..., description="Target status to transition to"),
+    body: StatusTransitionRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectResponse:
-    """Transition a project's status (validated by the status machine)."""
+    """Transition a project's status (validated by the status machine).
+
+    Reads ``status`` from the request JSON body.
+    """
     _ensure_org(current_user)
     service = ProjectService(db)
-    return await service.transition_status(project_id, new_status, current_user.organization_id)
+    return await service.transition_status(project_id, body.status, current_user.organization_id)
+
+
+@router.get("/{project_id}/collection-runs", response_model=CollectionRunListResponse)
+async def list_collection_runs(
+    project_id: uuid.UUID,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> CollectionRunListResponse:
+    """Return paginated collection runs for a project (newest first)."""
+    _ensure_org(current_user)
+    repo = CollectionRunRepository(db)
+    items, total = await repo.list_by_project(project_id, page=page, page_size=page_size)
+    return CollectionRunListResponse(items=items, total=total)
 
 
 @router.get("/{project_id}/search-strategy", response_model=SearchStrategyResponse | None)

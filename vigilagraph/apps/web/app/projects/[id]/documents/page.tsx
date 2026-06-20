@@ -67,6 +67,25 @@ const statusVariants: Record<string, any> = {
   error: "destructive",
 };
 
+const sourceLabels: Record<string, string> = {
+  manual_upload: "Uploaded",
+  openalex: "OpenAlex",
+};
+
+function SourceBadge({ sourceName }: { sourceName?: string }) {
+  if (!sourceName || sourceName === "manual_upload") {
+    return <span className="text-xs text-muted-foreground">Manual</span>;
+  }
+  return (
+    <Badge
+      variant={sourceName === "openalex" ? "graph_ready" : "outline"}
+      className="text-[10px] px-1.5 py-0"
+    >
+      {sourceLabels[sourceName] || sourceName}
+    </Badge>
+  );
+}
+
 export default function DocumentsPage() {
   const params = useParams();
   const projectId = params.id as string;
@@ -219,6 +238,7 @@ export default function DocumentsPage() {
                     <TableHead>Title</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Source</TableHead>
                     <TableHead>Uploaded</TableHead>
                     <TableHead className="w-[120px]"></TableHead>
                   </TableRow>
@@ -248,6 +268,9 @@ export default function DocumentsPage() {
                           {statusLabels[doc.processing_status] ||
                             doc.processing_status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <SourceBadge sourceName={doc.source_name} />
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {format(new Date(doc.created_at), "PP", { locale: es })}

@@ -6,17 +6,31 @@ import re
 import secrets
 import uuid
 
+from celery import Celery
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from structlog import get_logger
 
+from app.core.config import settings
+from app.models.collection_run import CollectionRun
 from app.models.project import SurveillanceProject
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.search_strategy_repository import SearchStrategyRepository
 from app.schemas.project import ProjectCreate, ProjectListResponse, ProjectResponse, ProjectUpdate
 
 logger = get_logger(__name__)
+
+# Lightweight Celery app used only to enqueue tasks by name.
+# Shares the same broker as the worker — tasks are resolved at runtime.
+celery_app = Celery("vigilagraph")
+celery_app.config_from_object({
+    "broker_url": settings.CELERY_BROKER_URL,
+    "result_backend": settings.CELERY_RESULT_BACKEND,
+    "task_serializer": "json",
+    "result_serializer": "json",
+    "accept_content": ["json"],
+})
 
 
 class ProjectStatusMachine:
@@ -151,6 +165,58 @@ class ProjectService:
             raise HTTPException(
                 status_code=422,
                 detail=f"Cannot transition from '{from_status}' to '{to_status}'. Valid transitions: {valid}",
+            )
+
+        # ── Side effects for `draft → collecting` ───────────────────────
+        if to_status == "collecting":
+            if project.search_strategy is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Cannot start collection without a SearchStrategy. Please configure one first.",
+                )
+
+            sources = project.search_strategy.sources_selected or ""
+            sources_list = [s.strip().lower() for s in sources.split(",") if s.strip()]
+            if "openalex" not in sources_list:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Cannot start collection: source 'openalex' is not selected in the SearchStrategy.",
+                )
+
+            # Check for already-running collection
+            from sqlalchemy import select
+
+            stmt = select(CollectionRun).where(
+                CollectionRun.project_id == project.id,
+                CollectionRun.status.in_(["pending", "running"]),
+            )
+            active = (await self.db.execute(stmt)).scalar_one_or_none()
+            if active is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="A collection run is already in progress for this project.",
+                )
+
+            # Create a CollectionRun record
+            collection_run = CollectionRun(
+                project_id=project.id,
+                source_name="openalex",
+                status="pending",
+            )
+            self.db.add(collection_run)
+            await self.db.flush()
+            await self.db.refresh(collection_run)
+
+            # Enqueue the Celery worker task
+            celery_app.send_task(
+                "collect_from_source",
+                args=[str(collection_run.id)],
+            )
+
+            logger.info(
+                "collection_triggered",
+                project_id=str(project.id),
+                run_id=str(collection_run.id),
             )
 
         project.status = to_status

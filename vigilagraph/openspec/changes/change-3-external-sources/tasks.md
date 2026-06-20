@@ -34,7 +34,7 @@ Chain strategy: stacked-to-main
 - [x] **1.4** Modificar `apps/api/app/models/project.py`: agregar `collection_runs: Mapped[list[CollectionRun]]` relationship back_populates. Actualizar `apps/api/app/models/__init__.py`: importar + exportar `CollectionRun` y `SourceName`.
 - [x] **1.5** Crear `apps/api/app/schemas/collection_run.py` con `CollectionRunResponse` y `CollectionRunListResponse` (from_attributes=True). Modificar `apps/api/app/schemas/document.py`: agregar `source_name: str = "manual_upload"` a `DocumentResponse`. Actualizar `apps/api/app/schemas/__init__.py`.
 - [x] **1.6** Crear migración Alembic `apps/api/alembic/versions/002_collection_runs.py`: add column `source_name` a `documents` (server_default="manual_upload"), índice compuesto `ix_documents_source_lookup` (project_id, source_name, source_id), crear tabla `collection_runs`. Downgrade: drop table, drop index, drop column.
-- [ ] **1.7** Crear `apps/api/app/repositories/collection_run_repository.py` — `CollectionRunRepository.list_by_project(project_id, page, page_size)`. Modificar `apps/api/app/api/v1/projects.py` y `apps/api/app/api/v1/router.py`: agregar `GET /projects/{id}/collection-runs` → 200 `CollectionRunListResponse` paginado DESC, org-scoped.
+- [x] **1.7** Crear `apps/api/app/repositories/collection_run_repository.py` — `CollectionRunRepository.list_by_project(project_id, page, page_size)`. Modificar `apps/api/app/api/v1/projects.py`: agregar `GET /projects/{id}/collection-runs` → 200 `CollectionRunListResponse` paginado DESC, org-scoped.
 
 **ACs cubiertas (spec):** Modelo CollectionRun (feliz/error/regla), Schema CollectionRunResponse, Document.source_name manual_upload default, migración documentos existentes.
 
@@ -73,34 +73,33 @@ Chain strategy: stacked-to-main
 
 ## PR 3: Trigger + Frontend — Hook, UI, Tipos
 
-- [ ] **3.1** Modificar `apps/api/app/services/project_service.py`:
-  - Agregar `StatusTransitionRequest(BaseModel): status: str` en schemas o inline.
+- [x] **3.1** Modificar `apps/api/app/services/project_service.py`:
   - En `transition_status()`: detectar `to_status == "collecting"` ANTES de escribir.
     - Validar que `project.search_strategy` no sea None → 422 "SearchStrategy required".
     - Validar que `project.search_strategy.sources_selected` contenga "openalex" → 422 "Source 'openalex' not selected".
     - Validar que no exista un CollectionRun en estado running para este proyecto → 409 "Collection already in progress".
     - Crear `CollectionRun(project_id=project.id, source_name="openalex", status="pending")`.
-    - Encolar `collect_from_source.delay(str(project.id), str(run.id))`.
+    - Encolar `collect_from_source.delay(str(collection_run.id))`.
     - Luego continuar con escritura del status.
-  - Usar `celery_app.send_task(...)` o import directa de la tarea (según patrón existente).
-- [ ] **3.2** Modificar `apps/api/app/api/v1/projects.py`: arreglar `transition_project_status` para leer `status` del body JSON (no query param). Agregar `StatusTransitionRequest` schema.
-- [ ] **3.3** Modificar `apps/web/types/api.ts`:
+  - Usar `celery_app.send_task(...)` (patrón sin importar la tarea directamente).
+- [x] **3.2** Modificar `apps/api/app/api/v1/projects.py`: arreglar `transition_project_status` para leer `status` del body JSON (no query param). Agregar `StatusTransitionRequest` schema.
+- [x] **3.3** Modificar `apps/web/types/api.ts`:
   - Agregar `CollectionRun` interface (id, project_id, source_name, status, started_at?, finished_at?, docs_found?, docs_inserted?, error_message?, created_at).
-  - Agregar `source_name: string` a `Document`.
+  - Agregar `source_name?: string` a `Document`.
   - Agregar `ProjectStatus` incluir `"failed"`.
-- [ ] **3.4** Crear `apps/web/hooks/use-collection.ts` — `useCollectionRuns(projectId: string)` basado en `useProjects` pattern.
-- [ ] **3.5** Modificar `apps/web/hooks/use-projects.ts`: corregir URLs de `/strategy` a `/search-strategy` en `useSearchStrategy`, `useUpdateSearchStrategy`, `useGenerateSearchStrategy`.
-- [ ] **3.6** Modificar `apps/web/app/projects/[id]/page.tsx`:
-  - Agregar botón "Collect Now" en la sección de quick actions (card).
+  - Agregar `CollectionRunListResponse`.
+- [x] **3.4** Crear `apps/web/hooks/use-collection.ts` — `useCollectionRuns(projectId: string)`, `useTriggerCollection()`, `useLatestCollectionRuns(projectId)`.
+- [x] **3.5** Modificar `apps/web/hooks/use-projects.ts`: corregir URLs de `/strategy` a `/search-strategy` en `useSearchStrategy`, `useUpdateSearchStrategy`, `useGenerateSearchStrategy`.
+- [x] **3.6** Modificar `apps/web/app/projects/[id]/page.tsx`:
+  - Agregar botón "Collect Now" en sección de quick actions (card).
   - Solo visible cuando `project.status === "draft"`.
-  - Llamar `useTransitionStatus` con `status: "collecting"`.
+  - Llamar `useTriggerCollection` con `projectId`.
   - Loading state mientras la transición está en curso.
-  - Deshabilitado + tooltip si el proyecto no tiene SearchStrategy.
-  - Refrescar proyecto luego de la transición.
-- [ ] **3.7** Modificar `apps/web/app/projects/[id]/documents/page.tsx`:
+  - Muestra últimas 3 collection runs con badges de status y contadores.
+  - Refrescar proyecto y colecciones luego de la transición.
+- [x] **3.7** Modificar `apps/web/app/projects/[id]/documents/page.tsx`:
   - Agregar columna "Source" en la tabla de documentos.
-  - Badge con `source_name` cuando `source_name !== "manual_upload"` (con variante de color/clase según source).
-  - Ocultar badge o mostrar "Manual" si `source_name === "manual_upload"`.
+  - `SourceBadge` componente: muestra "Manual" si source_name es "manual_upload" o undefined, badge con color para "openalex".
 
 **ACs cubiertas (spec):** Hook transition → collecting (feliz/sin-strategy/sin-openalex/ya-collecting), StatusTransitionRequest fix, Botón Collect Now (feliz/disabled), Badge source, Fix URL strategy.
 
@@ -119,9 +118,9 @@ Chain strategy: stacked-to-main
 | `apps/api/app/schemas/document.py` | Modificar | PR 1 |
 | `apps/api/app/schemas/__init__.py` | Modificar | PR 1 |
 | `apps/api/alembic/versions/002_collection_runs.py` | **Crear** | PR 1 |
-| `apps/api/app/repositories/collection_run_repository.py` | **Crear** | PR 1 |
+| `apps/api/app/repositories/collection_run_repository.py` | **Crear** | PR 3 (deferred from PR 1) |
 | `apps/api/app/api/v1/projects.py` | Modificar | PR 1, PR 3 |
-| `apps/api/app/api/v1/router.py` | Modificar | PR 1 |
+| `apps/api/app/api/v1/router.py` | — | No changes needed (endpoint added to existing projects router) |
 | `apps/worker/worker/connectors/base.py` | **Crear** | PR 2 |
 | `apps/worker/worker/connectors/openalex.py` | **Crear** | PR 2 |
 | `apps/worker/worker/tasks/collection_tasks.py` | **Crear** | PR 2 |

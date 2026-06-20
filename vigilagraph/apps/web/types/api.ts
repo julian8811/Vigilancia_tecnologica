@@ -39,6 +39,25 @@ export interface User {
   created_at: string;
 }
 
+// ─── Collection Run ───────────────────────────────────────
+export interface CollectionRun {
+  id: string;
+  project_id: string;
+  source_name: string;
+  status: "pending" | "running" | "completed" | "failed";
+  started_at: string | null;
+  finished_at: string | null;
+  docs_found: number;
+  docs_inserted: number;
+  error_message: string | null;
+  created_at: string;
+}
+
+export interface CollectionRunListResponse {
+  items: CollectionRun[];
+  total: number;
+}
+
 // ─── Project ─────────────────────────────────────────────
 export type ProjectStatus =
   | "draft"
@@ -46,7 +65,8 @@ export type ProjectStatus =
   | "processing"
   | "graph_ready"
   | "report_ready"
-  | "archived";
+  | "archived"
+  | "failed";
 
 export type SurveillanceType =
   | "patent"
@@ -106,6 +126,7 @@ export interface Document {
   file_path?: string;
   text_path?: string;
   checksum?: string;
+  source_name?: string;
   processing_status: string;
   metadata: Record<string, any>;
   created_at: string;

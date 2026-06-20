@@ -112,7 +112,7 @@ export function useSearchStrategy(projectId: string) {
   return useQuery<SearchStrategy>({
     queryKey: ["search-strategy", projectId],
     queryFn: () =>
-      api.get<SearchStrategy>(`/projects/${projectId}/strategy`),
+      api.get<SearchStrategy>(`/projects/${projectId}/search-strategy`),
     enabled: !!projectId,
   });
 }
@@ -126,7 +126,7 @@ export function useUpdateSearchStrategy() {
     }: {
       projectId: string;
       data: Partial<SearchStrategy>;
-    }) => api.put<SearchStrategy>(`/projects/${projectId}/strategy`, data),
+    }) => api.put<SearchStrategy>(`/projects/${projectId}/search-strategy`, data),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({
         queryKey: ["search-strategy", vars.projectId],
@@ -140,7 +140,7 @@ export function useGenerateSearchStrategy() {
   return useMutation({
     mutationFn: (projectId: string) =>
       api.post<SearchStrategy>(
-        `/projects/${projectId}/strategy/generate`,
+        `/projects/${projectId}/search-strategy/generate`,
       ),
     onSuccess: (_, projectId) => {
       qc.invalidateQueries({

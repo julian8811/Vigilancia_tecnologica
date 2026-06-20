@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useProject } from "@/hooks/use-projects";
 import { useDocuments } from "@/hooks/use-documents";
 import { useLatestRun } from "@/hooks/use-graph";
+import {
+  useTriggerCollection,
+  useLatestCollectionRuns,
+} from "@/hooks/use-collection";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -22,6 +26,8 @@ import {
   Languages,
   FileType,
   Calendar,
+  Loader2,
+  Database,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -49,6 +55,8 @@ export default function ProjectOverviewPage() {
   const { data: project, isLoading } = useProject(projectId);
   const { data: docsData } = useDocuments(projectId, 1, 1);
   const { data: latestRun } = useLatestRun(projectId);
+  const { data: latestRuns } = useLatestCollectionRuns(projectId);
+  const triggerCollection = useTriggerCollection();
 
   if (isLoading) {
     return (
@@ -177,6 +185,77 @@ export default function ProjectOverviewPage() {
             </Button>
           </CardContent>
         </Card>
+
+        {project.status === "draft" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                External Collection
+              </CardTitle>
+              <CardDescription>
+                Collect documents from OpenAlex and other sources.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button
+                size="sm"
+                onClick={() => triggerCollection.mutate(projectId)}
+                disabled={triggerCollection.isPending}
+              >
+                {triggerCollection.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Starting...
+                  </>
+                ) : (
+                  <>
+                    <Database className="mr-2 h-4 w-4" />
+                    Collect Now
+                  </>
+                )}
+              </Button>
+
+              {/* Last 3 collection runs */}
+              {latestRuns && latestRuns.length > 0 && (
+                <div className="space-y-2 pt-2 border-t">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Recent collections
+                  </p>
+                  {latestRuns.map((run) => (
+                    <div
+                      key={run.id}
+                      className="flex items-center justify-between text-xs"
+                    >
+                      <span className="text-muted-foreground">
+                        {format(new Date(run.created_at), "PP", { locale: es })}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">
+                          {run.docs_inserted}/{run.docs_found}
+                        </span>
+                        <Badge
+                          variant={
+                            run.status === "completed"
+                              ? "graph_ready"
+                              : run.status === "failed"
+                                ? "destructive"
+                                : run.status === "running" || run.status === "pending"
+                                  ? "processing"
+                                  : "outline"
+                          }
+                          className="text-[10px] px-1.5 py-0"
+                        >
+                          {run.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Creation info */}
