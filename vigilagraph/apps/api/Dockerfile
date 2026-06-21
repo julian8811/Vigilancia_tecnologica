@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 COPY pyproject.toml .
-RUN uv sync --frozen --no-dev
+RUN uv sync
 
 # ──────────────────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime
@@ -23,7 +23,7 @@ WORKDIR /app
 COPY --from=builder /app/.venv .venv
 COPY . .
 
-RUN mkdir -p /data/storage && chown -R vigilagraph:vigilagraph /app /data/storage
+RUN pip install --no-cache-dir graphifyy openai && mkdir -p /data/storage && chown -R vigilagraph:vigilagraph /app /data/storage
 
 USER vigilagraph
 EXPOSE 8000

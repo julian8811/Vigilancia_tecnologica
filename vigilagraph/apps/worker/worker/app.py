@@ -4,20 +4,14 @@ from __future__ import annotations
 
 from celery import Celery
 
-# NOTE: In production, these would be imported from a shared config module
-# or from the API's settings. For now we inline the env-var names so the
-# worker can operate independently.
-
-BROKER_URL = "redis://localhost:6379/0"
-RESULT_BACKEND = "redis://localhost:6379/0"
+from app.core.config import settings
 
 app = Celery(
     "vigilagraph",
-    broker=BROKER_URL,
-    backend=RESULT_BACKEND,
+    broker=settings.CELERY_BROKER_URL,
+    backend=settings.CELERY_RESULT_BACKEND,
     include=[
         "worker.tasks",
-        "worker.tasks.collection_tasks",
         "worker.graphify.adapter",
     ],
 )

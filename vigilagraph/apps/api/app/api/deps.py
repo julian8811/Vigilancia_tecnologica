@@ -1,4 +1,4 @@
-"""FastAPI dependencies — DB sessions, auth, and role checking."""
+"""FastAPI dependencies — DB sessions, auth, role checking, and org-bound project verification."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from structlog import get_logger
 from app.core.security import decode_access_token
 from app.db.session import async_session_factory
 from app.models.user import User
+from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
 
 logger = get_logger(__name__)
@@ -82,6 +83,25 @@ async def get_current_active_user(
     """
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+async def verify_project_org(
+    project_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """Verify the user belongs to the same org as the project.
+
+    Returns the current user on success; raises 403/404 otherwise.
+    Always raises 404 (not 403) to avoid leaking project existence.
+    """
+    if current_user.organization_id is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    repo = ProjectRepository(db)
+    project = await repo.get_with_org_check(project_id, current_user.organization_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
     return current_user
 
 

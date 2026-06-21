@@ -69,7 +69,7 @@ export default function CorpusPage() {
   const progressValue = summary?.total_documents
     ? Math.min(
         100,
-        Math.round((summary.file_count / summary.total_documents) * 100),
+        Math.round(((summary.extracted_documents ?? 0) / summary.total_documents) * 100),
       )
     : 0;
 

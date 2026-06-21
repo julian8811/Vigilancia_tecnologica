@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from app.api.deps import get_current_active_user, get_db
+from app.api.deps import get_current_active_user, get_db, verify_project_org
 from app.models.user import User
 from app.schemas.graph import (
     GraphEdgeListResponse,
@@ -26,11 +27,6 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/projects/{project_id}/graph", tags=["graph"])
 
 
-def _ensure_org(current_user: User) -> None:
-    if current_user.organization_id is None:
-        raise HTTPException(status_code=403, detail="User does not belong to an organisation")
-
-
 def _get_service(db: AsyncSession) -> GraphService:
     return GraphService(db)
 
@@ -40,12 +36,12 @@ async def generate_graph(
     project_id: uuid.UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(verify_project_org),
 ) -> GraphGenerateResponse:
     """Trigger knowledge-graph generation via Graphify.
 
     MVP: runs synchronously. Production will use Celery with polling.
     """
-    _ensure_org(current_user)
     service = _get_service(db)
     return await service.generate(project_id, current_user.organization_id)
 
@@ -55,9 +51,9 @@ async def latest_graph(
     project_id: uuid.UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(verify_project_org),
 ) -> GraphRunResponse | None:
     """Return the most recent completed graph run."""
-    _ensure_org(current_user)
     service = _get_service(db)
     return await service.get_latest(project_id, current_user.organization_id)
 
@@ -69,9 +65,9 @@ async def list_runs(
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(verify_project_org),
 ) -> GraphRunListResponse:
     """List historical graph runs for a project."""
-    _ensure_org(current_user)
     service = _get_service(db)
     return await service.list_runs(project_id, current_user.organization_id, page=page, page_size=page_size)
 
@@ -88,9 +84,9 @@ async def list_nodes(
     community_id: int | None = Query(None, description="Filter by community"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(verify_project_org),
 ) -> GraphNodeListResponse:
     """List graph nodes for a run, with optional filters."""
-    _ensure_org(current_user)
     service = _get_service(db)
     return await service.list_nodes(
         run_id, current_user.organization_id,
@@ -108,9 +104,9 @@ async def top_nodes(
     node_type: str | None = Query(None),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(verify_project_org),
 ) -> GraphNodeListResponse:
     """Return the top N nodes by centrality score."""
-    _ensure_org(current_user)
     service = _get_service(db)
     return await service.list_nodes(
         run_id, current_user.organization_id,
@@ -128,9 +124,9 @@ async def list_edges(
     edge_type: str | None = Query(None, description="Filter by edge type"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(verify_project_org),
 ) -> GraphEdgeListResponse:
     """List graph edges for a run."""
-    _ensure_org(current_user)
     service = _get_service(db)
     return await service.list_edges(
         run_id, current_user.organization_id,
@@ -144,9 +140,9 @@ async def query_graph(
     query: GraphQueryRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(verify_project_org),
 ) -> GraphQueryResponse:
     """Query the knowledge graph with filters."""
-    _ensure_org(current_user)
     service = _get_service(db)
 
     # Use the latest run if no run_id specified
@@ -165,9 +161,9 @@ async def find_paths(
     max_depth: int = Query(5, ge=1, le=10),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(verify_project_org),
 ) -> list[GraphEdgeResponse]:
     """Find the shortest path between two nodes in the graph."""
-    _ensure_org(current_user)
     service = _get_service(db)
 
     latest = await service.get_latest(project_id, current_user.organization_id)
@@ -175,3 +171,44 @@ async def find_paths(
         return []
 
     return await service.find_path(latest.id, current_user.organization_id, source, target, max_depth)
+
+
+# ── Raw file downloads (no JSON wrapper) ──────────────────────────
+
+
+@router.get("/download-json")
+async def download_graph_json(
+    project_id: uuid.UUID,
+    run_id: uuid.UUID = Query(..., description="Graph run ID"),
+    _: User = Depends(verify_project_org),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Download the raw graph.json for a completed run."""
+    service = _get_service(db)
+    run = await service.get_run(run_id)
+    if not run.graph_json_path:
+        raise HTTPException(status_code=404, detail="No graph JSON file for this run")
+    try:
+        content = Path(run.graph_json_path).read_bytes()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Graph JSON file not found on disk")
+    return Response(content=content, media_type="application/json")
+
+
+@router.get("/html")
+async def get_graph_html(
+    project_id: uuid.UUID,
+    run_id: uuid.UUID = Query(..., description="Graph run ID"),
+    _: User = Depends(verify_project_org),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Return the raw graph.html for a completed run."""
+    service = _get_service(db)
+    run = await service.get_run(run_id)
+    if not run.graph_html_path:
+        raise HTTPException(status_code=404, detail="No graph HTML file for this run")
+    try:
+        content = Path(run.graph_html_path).read_bytes()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Graph HTML file not found on disk")
+    return Response(content=content, media_type="text/html")

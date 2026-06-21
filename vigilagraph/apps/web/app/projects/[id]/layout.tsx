@@ -14,6 +14,8 @@ import {
   Share2,
   BarChart3,
   FileBarChart,
+  Search,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +42,11 @@ function useProjectTabs(projectId: string): Tab[] {
       icon: LayoutDashboard,
     },
     {
+      label: "Search",
+      href: `/projects/${projectId}/search`,
+      icon: Search,
+    },
+    {
       label: "Documents",
       href: `/projects/${projectId}/documents`,
       icon: FileText,
@@ -63,6 +70,11 @@ function useProjectTabs(projectId: string): Tab[] {
       label: "Reports",
       href: `/projects/${projectId}/reports`,
       icon: FileBarChart,
+    },
+    {
+      label: "Logs",
+      href: `/projects/${projectId}/logs`,
+      icon: ScrollText,
     },
   ];
 }

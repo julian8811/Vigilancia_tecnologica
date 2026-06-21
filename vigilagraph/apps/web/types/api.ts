@@ -69,11 +69,15 @@ export type ProjectStatus =
   | "failed";
 
 export type SurveillanceType =
-  | "patent"
-  | "scientific"
-  | "news"
-  | "social"
-  | "full";
+  | "tecnologica"
+  | "cientifica"
+  | "competitiva"
+  | "patentaria"
+  | "normativa"
+  | "mercado"
+  | "academica"
+  | "mixta"
+  | "estrategica";
 
 export interface Project {
   id: string;
@@ -110,9 +114,14 @@ export interface ProjectCreate {
 export interface SearchStrategy {
   id: string;
   project_id: string;
-  keywords: string[];
-  synonyms: Record<string, string[]>;
-  sources_selected: string[];
+  keywords_en?: string;
+  keywords_es?: string;
+  synonyms?: string;
+  excluded_terms?: string;
+  sources_selected?: string;
+  boolean_queries?: string;
+  scrape_urls?: string;
+  generated_by_ai: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -143,10 +152,29 @@ export interface DocumentListResponse {
 
 // ─── Corpus ──────────────────────────────────────────────
 export interface CorpusSummary {
+  project_id?: string;
   total_documents: number;
-  status: string;
+  extracted_documents?: number;
+  pending_documents?: number;
+  failed_documents?: number;
+  corpus_ready: boolean;
+  corpus_path?: string;
+  corpus_size_bytes?: number;
+  entries?: CorpusEntry[];
+  last_rebuild_at?: string;
+  status?: string;
   last_rebuilt?: string;
-  file_count: number;
+  file_count?: number;
+}
+
+export interface CorpusEntry {
+  document_id: string;
+  title?: string;
+  file_type?: string;
+  file_path?: string;
+  text_path?: string;
+  processing_status?: string;
+  in_corpus?: boolean;
 }
 
 // ─── Graph ───────────────────────────────────────────────
@@ -156,7 +184,10 @@ export interface GraphRun {
   status: string;
   started_at?: string;
   completed_at?: string;
+  finished_at?: string;
   error_message?: string;
+  node_count?: number;
+  edge_count?: number;
   stats?: Record<string, any>;
 }
 
@@ -179,6 +210,108 @@ export interface GraphEdge {
   edge_type: string;
   weight: number;
   metadata: Record<string, any>;
+}
+
+// ─── Analysis ─────────────────────────────────────────────
+export interface Technology {
+  id: string;
+  project_id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  trl_level?: number;
+  confidence?: number;
+  evidence_score?: number;
+  created_at: string;
+}
+
+export interface TechnologyListResponse {
+  items: Technology[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface Trend {
+  id: string;
+  project_id: string;
+  name: string;
+  description?: string;
+  momentum?: string;
+  trend_type?: string;
+  growth_signal?: string;
+  created_at: string;
+}
+
+export interface TrendListResponse {
+  items: Trend[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface ActorAnalysis {
+  id: string;
+  project_id: string;
+  name: string;
+  actor_type?: string;
+  country?: string;
+  relevance?: number;
+  created_at: string;
+}
+
+export interface ActorListResponse {
+  items: ActorAnalysis[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface Opportunity {
+  id: string;
+  project_id: string;
+  title: string;
+  description?: string;
+  opportunity_type?: string;
+  potential?: string;
+  effort?: string;
+  priority?: string;
+  created_at: string;
+}
+
+export interface OpportunityListResponse {
+  items: Opportunity[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+// ─── Reports ──────────────────────────────────────────────
+export interface Report {
+  id: string;
+  project_id: string;
+  title: string;
+  report_type: string;
+  status: string;
+  format?: string;
+  html_path?: string;
+  pdf_path?: string;
+  markdown_path?: string;
+  error_message?: string;
+  generated_at?: string;
+  created_at: string;
+}
+
+export interface ReportListResponse {
+  items: Report[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
 }
 
 export interface PaginatedResponse<T> {

@@ -36,12 +36,13 @@ async def me(current_user: User = Depends(get_current_active_user)) -> UserRespo
     return UserResponse.model_validate(current_user)
 
 
-@router.post("/change-password", status_code=204)
+@router.post("/change-password", status_code=200)
 async def change_password(
     request: ChangePasswordRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
-) -> None:
+) -> dict:
     """Change the current user's password."""
     service = AuthService(db)
     await service.change_password(current_user, request)
+    return {"detail": "Password updated successfully"}

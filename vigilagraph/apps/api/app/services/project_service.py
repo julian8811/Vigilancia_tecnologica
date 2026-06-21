@@ -6,7 +6,6 @@ import re
 import secrets
 import uuid
 
-from celery import Celery
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
@@ -18,19 +17,9 @@ from app.models.project import SurveillanceProject
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.search_strategy_repository import SearchStrategyRepository
 from app.schemas.project import ProjectCreate, ProjectListResponse, ProjectResponse, ProjectUpdate
+from app.tasks.collection import run_collection
 
 logger = get_logger(__name__)
-
-# Lightweight Celery app used only to enqueue tasks by name.
-# Shares the same broker as the worker — tasks are resolved at runtime.
-celery_app = Celery("vigilagraph")
-celery_app.config_from_object({
-    "broker_url": settings.CELERY_BROKER_URL,
-    "result_backend": settings.CELERY_RESULT_BACKEND,
-    "task_serializer": "json",
-    "result_serializer": "json",
-    "accept_content": ["json"],
-})
 
 
 class ProjectStatusMachine:
@@ -207,11 +196,9 @@ class ProjectService:
             await self.db.flush()
             await self.db.refresh(collection_run)
 
-            # Enqueue the Celery worker task
-            celery_app.send_task(
-                "collect_from_source",
-                args=[str(collection_run.id)],
-            )
+            # Enqueue the collection runner (in-process, no Celery)
+            import asyncio as _asyncio
+            _asyncio.create_task(run_collection(self.db, str(collection_run.id)))
 
             logger.info(
                 "collection_triggered",
@@ -310,16 +297,15 @@ class ProjectService:
     @staticmethod
     def _append_copy_suffix(title: str) -> str:
         """Append ``(copy)`` — or ``(copy N)`` if it already ends with one."""
-        import re as _re
 
         # Check if already ends with (copy N)
-        m = _re.search(r"\s*\(copy\s+\d+\)\s*$", title)
+        m = re.search(r"\s*\(copy\s+\d+\)\s*$", title)
         if m:
-            n = int(_re.search(r"\d+", m.group()).group()) + 1
-            return _re.sub(r"\s*\(copy\s+\d+\)\s*$", f" (copy {n})", title)
+            n = int(re.search(r"\d+", m.group()).group()) + 1
+            return re.sub(r"\s*\(copy\s+\d+\)\s*$", f" (copy {n})", title)
 
         # Check if already ends with (copy)
-        if _re.search(r"\s*\(copy\)\s*$", title):
-            return _re.sub(r"\s*\(copy\)\s*$", " (copy 2)", title)
+        if re.search(r"\s*\(copy\)\s*$", title):
+            return re.sub(r"\s*\(copy\)\s*$", " (copy 2)", title)
 
         return f"{title} (copy)"

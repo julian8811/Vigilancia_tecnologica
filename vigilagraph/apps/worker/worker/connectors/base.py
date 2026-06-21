@@ -6,11 +6,11 @@ implements this interface so the collection task can treat them uniformly.
 
 from __future__ import annotations
 
-import logging
+from structlog import get_logger
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class BaseConnector(ABC):

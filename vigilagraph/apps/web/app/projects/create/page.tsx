@@ -42,11 +42,13 @@ const createProjectSchema = z.object({
 type CreateProjectForm = z.infer<typeof createProjectSchema>;
 
 const surveillanceTypes: { value: SurveillanceType; label: string }[] = [
-  { value: "patent", label: "Patent" },
-  { value: "scientific", label: "Scientific" },
-  { value: "news", label: "News" },
-  { value: "social", label: "Social" },
-  { value: "full", label: "Full (all sources)" },
+  { value: "tecnologica", label: "Technological" },
+  { value: "cientifica", label: "Scientific" },
+  { value: "competitiva", label: "Competitive" },
+  { value: "estrategica", label: "Strategic" },
+  { value: "patentaria", label: "Patent" },
+  { value: "mercado", label: "Market" },
+  { value: "academica", label: "Academic" },
 ];
 
 const languages = [

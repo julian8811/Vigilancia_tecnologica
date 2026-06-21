@@ -1,0 +1,94 @@
+# OpenSpec Configuration — VigilaGraph IA
+project: VigilaGraph IA
+repo: vigilancia/vigilagraph
+created: 2026-06-21
+artifact_store: hybrid
+
+context: |
+  VigilaGraph IA — AI-powered surveillance analysis platform.
+  3-app monorepo: FastAPI backend (Python 3.12, SQLAlchemy async, PostgreSQL+pgvector,
+  Celery+Redis), Celery worker (httpx, trafilatura, OpenAI), Next.js 14.2 frontend
+  (React 18, TypeScript, TanStack Query, shadcn/ui, Cytoscape.js).
+  Deployed on Railway.app (nixpacks) with Docker Compose for local dev.
+  MinIO/Railway Buckets for S3 storage. Alembic for migrations.
+
+stack:
+  backend:
+    language: Python 3.12+
+    framework: FastAPI
+    orm: SQLAlchemy 2 async + Alembic
+    validation: Pydantic v2
+    task_queue: Celery + Redis/Valkey
+    auth: python-jose + passlib + bcrypt
+    storage: boto3 (S3-compatible)
+    pdf: PyMuPDF
+  worker:
+    language: Python 3.12+
+    framework: Celery
+    http: httpx + tenacity
+    scraping: trafilatura + scrapling
+    llm: openai
+    documents: pypdf, python-docx, openpyxl
+  frontend:
+    framework: Next.js 14.2 (App Router)
+    language: TypeScript 5.7 (strict)
+    styling: Tailwind CSS 3.4 + shadcn/ui
+    state_query: TanStack Query v5
+    table: TanStack Table v8
+    forms: React Hook Form + Zod
+    graph: Cytoscape.js + cytoscape-dagre
+    icons: Lucide React
+    toast: Sonner
+  database:
+    primary: PostgreSQL + pgvector
+    cache_queue: Redis/Valkey
+    storage: MinIO / Railway Buckets (S3-compatible)
+    test_db: SQLite (pysqlite3-binary + aiosqlite, JSONB shim)
+  infrastructure:
+    platform: Railway.app (nixpacks)
+    local: Docker Compose (PostgreSQL, Redis, MinIO, Nginx)
+    graph_tool: Graphify (uv tool install graphifyy)
+
+testing:
+  strict_tdd: true
+  reason: "71 tests across 3 apps (pytest + pytest-asyncio + Vitest). Test infrastructure confirmed passing."
+  capabilities:
+    backend:
+      runner: pytest + pytest-asyncio
+      coverage: pytest-cov
+      layers:
+        unit: true
+        integration: true
+        e2e: false
+    worker:
+      runner: pytest + pytest-asyncio
+      coverage: pytest-cov
+      layers:
+        unit: true
+        integration: false
+        e2e: false
+    frontend:
+      runner: Vitest 2.1 + @testing-library/react + happy-dom
+      coverage: vitest --coverage (not yet configured)
+      layers:
+        unit: true
+        integration: true
+        e2e: false
+
+strict_tdd: true
+
+phase_rules:
+  proposal:
+    require_approval: true
+  spec:
+    require_approval: true
+  design:
+    require_approval: true
+  tasks:
+    require_approval: false
+  apply:
+    require_approval: false
+  verify:
+    require_approval: false
+  archive:
+    require_approval: false

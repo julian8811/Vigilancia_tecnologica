@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { useProjects } from "@/hooks/use-projects";
@@ -33,8 +35,15 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const { data: projectsData, isLoading } = useProjects(1, 100);
+
+  useEffect(() => {
+    if (!isLoading && projectsData && projectsData.total === 0) {
+      router.push("/onboarding");
+    }
+  }, [isLoading, projectsData, router]);
 
   const projects = projectsData?.items || [];
   const totalProjects = projects.length;

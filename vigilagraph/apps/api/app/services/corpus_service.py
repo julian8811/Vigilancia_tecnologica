@@ -6,7 +6,7 @@ import json
 import os
 import shutil
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -170,7 +170,7 @@ class CorpusService:
         # Write corpus metadata
         corpus_meta = {
             "project_id": str(project_id),
-            "last_rebuild_at": datetime.utcnow().isoformat(),
+            "last_rebuild_at": datetime.now(UTC).isoformat(),
             "total_documents": total,
             "extracted_included": added,
         }
@@ -285,7 +285,7 @@ class CorpusService:
             corpus_meta = json.loads(meta_path.read_text())
         else:
             corpus_meta = {}
-        corpus_meta["last_rebuild_at"] = datetime.utcnow().isoformat()
+        corpus_meta["last_rebuild_at"] = datetime.now(UTC).isoformat()
         corpus_meta["has_test_docs"] = True
         corpus_meta["test_doc_count"] = len(created)
         meta_path.write_text(json.dumps(corpus_meta, indent=2), encoding="utf-8")

@@ -132,7 +132,7 @@ export default function DocumentsPage() {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      await deleteDocument.mutateAsync(deleteId);
+      await deleteDocument.mutateAsync({ projectId, docId: deleteId });
       toast.success("Document deleted");
       setDeleteId(null);
     } catch (err: any) {
@@ -143,7 +143,7 @@ export default function DocumentsPage() {
   // Reprocess
   const handleReprocess = async (id: string) => {
     try {
-      await reprocessDocument.mutateAsync(id);
+      await reprocessDocument.mutateAsync({ projectId, docId: id });
       toast.success("Document queued for reprocessing");
     } catch (err: any) {
       toast.error(err?.detail || "Failed to reprocess document");

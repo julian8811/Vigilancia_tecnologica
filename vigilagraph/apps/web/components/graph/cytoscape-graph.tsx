@@ -6,19 +6,26 @@ import {
   useImperativeHandle,
   forwardRef,
   useCallback,
+  useState,
 } from "react";
 import cytoscape from "cytoscape";
 import type { GraphNode, GraphEdge } from "@/types/api";
 import { elementsToCyData, communityColor, getNodeTypeColor } from "@/lib/graph-utils";
 
-// Try to load dagre layout — will use fallback if unavailable
-let dagre: any = null;
-try {
-  dagre = require("cytoscape-dagre");
-  cytoscape.use(dagre);
-} catch {
-  // dagre not available, fall back to cose
+// Dagre availability flag — loaded once via dynamic import
+let dagreAvailable = false;
+
+async function ensureDagre() {
+  if (typeof window === "undefined") return false;
+  try {
+    const dagre = await import("cytoscape-dagre");
+    cytoscape.use(dagre.default || dagre);
+    dagreAvailable = true;
+  } catch {
+    dagreAvailable = false;
+  }
 }
+ensureDagre();
 
 export interface CytoscapeGraphHandle {
   zoomToNode: (nodeId: string) => void;
@@ -156,10 +163,10 @@ export const CytoscapeGraph = forwardRef<
         },
       ],
       layout: {
-        name: dagre ? "dagre" : "cose",
+        name: dagreAvailable ? "dagre" : "cose",
         animate: true,
         animationDuration: 500,
-        ...(dagre
+        ...(dagreAvailable
           ? {
               rankDir: "LR",
               spacingFactor: 1.5,

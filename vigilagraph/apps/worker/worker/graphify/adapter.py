@@ -12,13 +12,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
+from structlog import get_logger
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DEFAULT_GRAPHIFY_CMD = "graphify"
 
@@ -145,71 +145,6 @@ class GraphifyAdapter:
                 error_message=f"Graphify timed out after {params.timeout} seconds",
                 timed_out=True,
             )
-
-    def run_sync(
-        self,
-        input_path: str | Path,
-        output_dir: str | Path,
-        *,
-        timeout: int = 300,
-        extra_args: list[str] | None = None,
-    ) -> dict:
-        """Execute graphify on *input_path* and write results to *output_dir*.
-
-        Synchronous wrapper using ``subprocess.run``. Kept for backward
-        compatibility; prefer ``run_async`` for new code.
-
-        Args:
-            input_path: File or directory to analyse.
-            output_dir: Directory where graphify will write its output.
-            timeout: Subprocess timeout in seconds (default 300).
-            extra_args: Additional CLI flags to pass through.
-
-        Returns:
-            Parsed JSON output from graphify.
-
-        Raises:
-            FileNotFoundError: If graphify is not installed.
-            subprocess.TimeoutExpired: If the command exceeds *timeout*.
-            ValueError: If the output cannot be parsed as JSON.
-        """
-        if not self.is_available():
-            msg = (
-                "graphify CLI is not installed. "
-                "Install it with: uv tool install graphifyy"
-            )
-            raise FileNotFoundError(msg)
-
-        import subprocess
-
-        cmd = [
-            self._command,
-            str(input_path),
-            "--output-dir", str(output_dir),
-        ]
-        if extra_args:
-            cmd.extend(extra_args)
-
-        logger.info("Running graphify: %s", " ".join(cmd))
-
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-
-        if result.returncode != 0:
-            logger.error(
-                "graphify failed (exit=%d): stderr=%s",
-                result.returncode, result.stderr,
-            )
-            raise RuntimeError(
-                f"graphify exited with code {result.returncode}: {result.stderr}"
-            )
-
-        return self.parse_graph_json(result.stdout) or {"raw_output": result.stdout.strip()}
-
     @staticmethod
     def parse_graph_json(output: str) -> dict | None:
         """Try to parse stdout as JSON; return ``None`` on failure."""

@@ -10,7 +10,7 @@ API docs: https://docs.openalex.org/
 from __future__ import annotations
 
 import asyncio
-import logging
+from structlog import get_logger
 from typing import AsyncGenerator
 
 import httpx
@@ -23,7 +23,7 @@ from tenacity import (
 
 from worker.connectors.base import BaseConnector
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants

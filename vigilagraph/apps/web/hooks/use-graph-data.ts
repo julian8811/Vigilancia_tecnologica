@@ -9,11 +9,6 @@ interface UseGraphDataResult {
   error: Error | null;
 }
 
-/**
- * Fetches ALL graph nodes and edges with pagination.
- * The backend paginates at 500 items per page, so this loops
- * through all pages to assemble the complete dataset.
- */
 export function useGraphData(
   projectId: string,
   runId?: string,
@@ -38,27 +33,20 @@ export function useGraphData(
         const allNodes: GraphNode[] = [];
         let page = 1;
 
-        // Fetch all nodes
         while (true) {
-          const nodeRes = await api.get<PaginatedResponse<GraphNode>>(
-            `/graph/${projectId}/nodes`,
-            { token: localStorage.getItem("token") || undefined },
-          );
-          // Need to pass run_id as query param — use full URL
           const nodeData = await api.get<PaginatedResponse<GraphNode>>(
-            `/graph/${projectId}/nodes?run_id=${runId}&page=${page}&page_size=500`,
+            `/projects/${projectId}/graph/runs/${runId}/nodes?page=${page}&page_size=500`,
           );
           allNodes.push(...nodeData.items);
           if (page >= nodeData.total_pages) break;
           page++;
         }
 
-        // Fetch all edges
         page = 1;
         const allEdges: GraphEdge[] = [];
         while (true) {
           const edgeData = await api.get<PaginatedResponse<GraphEdge>>(
-            `/graph/${projectId}/edges?run_id=${runId}&page=${page}&page_size=500`,
+            `/projects/${projectId}/graph/runs/${runId}/edges?page=${page}&page_size=500`,
           );
           allEdges.push(...edgeData.items);
           if (page >= edgeData.total_pages) break;

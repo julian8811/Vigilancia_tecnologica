@@ -7,12 +7,12 @@ import type {
 } from "@/types/api";
 
 // ─── List Collection Runs ─────────────────────────────────
-export function useCollectionRuns(projectId: string) {
+export function useCollectionRuns(projectId: string, page = 1, pageSize = 20) {
   return useQuery<CollectionRunListResponse>({
-    queryKey: ["collection-runs", projectId],
+    queryKey: ["collection-runs", projectId, page, pageSize],
     queryFn: () =>
       api.get<CollectionRunListResponse>(
-        `/projects/${projectId}/collection-runs`,
+        `/projects/${projectId}/collection-runs?page=${page}&page_size=${pageSize}`,
       ),
     enabled: !!projectId,
   });

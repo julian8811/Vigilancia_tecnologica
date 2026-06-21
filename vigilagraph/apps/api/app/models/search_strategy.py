@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, ForeignKey, String, Text, func
+from sqlalchemy import DateTime,  Boolean, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,6 +30,10 @@ class SearchStrategy(Base):
         comment="openalex | semantic_scholar | lens | web",
     )
     boolean_queries: Mapped[str | None] = mapped_column(Text, nullable=True)
+    scrape_urls: Mapped[str | None] = mapped_column(
+        Text, nullable=True,
+        comment="Newline- or comma-separated URLs used when 'web' source is selected",
+    )
     generated_by_ai: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False,

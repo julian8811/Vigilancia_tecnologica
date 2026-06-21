@@ -57,3 +57,5 @@ graphify-out/
 
 # ── Railway / Nixpacks ────────────────────────────────────────────
 .railway/
+local.env
+local.env

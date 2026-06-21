@@ -189,7 +189,7 @@ def upgrade() -> None:
     op.create_table(
         "technologies",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("project_id", UUID(as_uuid=True), sa.ForeignKey("surveillance_projects.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column("project_id", UUID(as_uuid=True), sa.ForeignKey("surveillance_projects.id", ondelete="CASCADE"), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("description", sa.Text, nullable=True),
         sa.Column("confidence", sa.Float, nullable=True),
@@ -206,7 +206,7 @@ def upgrade() -> None:
     op.create_table(
         "trends",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("project_id", UUID(as_uuid=True), sa.ForeignKey("surveillance_projects.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column("project_id", UUID(as_uuid=True), sa.ForeignKey("surveillance_projects.id", ondelete="CASCADE"), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("description", sa.Text, nullable=True),
         sa.Column("momentum", sa.String(20), nullable=True, comment="emerging | growing | stable | declining | uncertain"),
@@ -223,7 +223,7 @@ def upgrade() -> None:
     op.create_table(
         "actors",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("project_id", UUID(as_uuid=True), sa.ForeignKey("surveillance_projects.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column("project_id", UUID(as_uuid=True), sa.ForeignKey("surveillance_projects.id", ondelete="CASCADE"), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("actor_type", sa.String(50), nullable=True, comment="author | institution | company | government | research_group | startup | ngo | funder"),
         sa.Column("relevance", sa.Float, nullable=True),
@@ -238,7 +238,7 @@ def upgrade() -> None:
     op.create_table(
         "opportunities",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("project_id", UUID(as_uuid=True), sa.ForeignKey("surveillance_projects.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column("project_id", UUID(as_uuid=True), sa.ForeignKey("surveillance_projects.id", ondelete="CASCADE"), nullable=False),
         sa.Column("title", sa.String(500), nullable=False),
         sa.Column("description", sa.Text, nullable=True),
         sa.Column("opportunity_type", sa.String(50), nullable=True, comment="research | commercial | technology_transfer | patent | funding | partnership | product_development | education | policy"),
@@ -258,7 +258,7 @@ def upgrade() -> None:
     op.create_table(
         "reports",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("project_id", UUID(as_uuid=True), sa.ForeignKey("surveillance_projects.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column("project_id", UUID(as_uuid=True), sa.ForeignKey("surveillance_projects.id", ondelete="CASCADE"), nullable=False),
         sa.Column("title", sa.String(500), nullable=False),
         sa.Column("report_type", sa.String(30), nullable=True, comment="completo | ejecutivo | academico | empresarial | patentario | comparativo"),
         sa.Column("status", sa.String(20), default="pending", nullable=False, comment="pending | generating | completed | failed"),

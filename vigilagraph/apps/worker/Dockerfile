@@ -14,8 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir uv
 
 WORKDIR /app
-COPY pyproject.toml .
-RUN uv sync --frozen --no-dev
+COPY worker/pyproject.toml .
+RUN uv sync
 
 # ──────────────────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime
@@ -33,18 +33,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcairo2 libasound2 libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
+# Install uv in runtime for graphify CLI tool
+RUN pip install --no-cache-dir uv
+
 WORKDIR /app
 COPY --from=builder /app/.venv .venv
-COPY . .
+
+# Copy API models (needed for app.models.* imports)
+COPY api/app /app/app
+# Copy worker code
+COPY worker/worker /app/worker
 
 # Install Playwright browsers (Chromium only for PDF rendering)
 RUN playwright install chromium 2>/dev/null || true
 
 RUN mkdir -p /data/storage && chown -R vigilagraph:vigilagraph /app /data/storage
 
-# Graphify is expected to be installed via `uv tool install graphifyy`.
-# It is invoked as a CLI subprocess, not a Python import.
-RUN echo '#!/bin/sh\necho "ERROR: graphify not installed. Run: uv tool install graphifyy"' > /usr/local/bin/graphify \
+# Install Graphify CLI tool
+RUN UV_LINK_MODE=copy pip install graphifyy 2>/dev/null || \
+    echo '#!/bin/sh\necho "WARNING: graphify not installed. Install: pip install graphifyy"' > /usr/local/bin/graphify \
     && chmod +x /usr/local/bin/graphify
 
 USER vigilagraph

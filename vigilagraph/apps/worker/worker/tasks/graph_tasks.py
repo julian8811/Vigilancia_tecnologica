@@ -3,27 +3,32 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import uuid
 from datetime import datetime, UTC
 from pathlib import Path
 
 from celery import Task
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from structlog import get_logger
 
 from worker.app import app as celery_app
 from worker.graphify.adapter import GraphifyAdapter, GraphifyInput
 from worker.graphify.importer import GraphDBImporter
 from worker.graphify.parser import GraphJsonParser
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
-# Database URL — in production this would come from shared config
-DATABASE_URL = "postgresql+asyncpg://vigilagraph:vigilagraph@localhost:5432/vigilagraph"
+# Database URL from shared config
+from app.core.config import settings
+DATABASE_URL = settings.DATABASE_URL
 
-# Create a separate engine for the worker (not sharing the API's engine)
-worker_engine = create_async_engine(DATABASE_URL, pool_size=5, max_overflow=10)
-worker_session_factory = async_sessionmaker(worker_engine, class_=AsyncSession, expire_on_commit=False)
+# Engine created per-task inside the async function (avoids event-loop cross-process issues)
+def get_worker_engine():
+    return create_async_engine(DATABASE_URL, pool_size=2, max_overflow=5)
+
+
+def get_worker_session_factory():
+    return async_sessionmaker(get_worker_engine(), class_=AsyncSession, expire_on_commit=False)
 
 
 class AsyncTask(Task):
@@ -54,23 +59,21 @@ class AsyncTask(Task):
         raise NotImplementedError
 
 
-@celery_app.task(base=AsyncTask, bind=True, name="run_graphify")
-async def run_graphify(self, project_id: str, run_id: str) -> dict:
-    """Execute graphify for a project as a Celery task.
+@celery_app.task(bind=True, name="run_graphify")
+def run_graphify(self, project_id: str, run_id: str) -> dict:
+    """Execute graphify for a project as a Celery task."""
+    return asyncio.run(_run_graphify_async(project_id, run_id))
 
-    Args:
-        project_id: UUID of the surveillance project.
-        run_id: UUID of the GraphRun record to update.
 
-    Returns:
-        A dict with the task result summary.
-    """
+async def _run_graphify_async(project_id: str, run_id: str) -> dict:
+    """Async implementation of graphify execution."""
     project_uuid = uuid.UUID(project_id)
     run_uuid = uuid.UUID(run_id)
 
     logger.info("graphify_task_started", project_id=project_id, run_id=run_id)
 
-    async with worker_session_factory() as db:
+    session_factory = get_worker_session_factory()
+    async with session_factory() as db:
         try:
             # 1. Resolve the GraphRun record
             from app.models.graph import GraphRun

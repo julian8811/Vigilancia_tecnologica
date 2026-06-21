@@ -9,6 +9,9 @@ from app.api.v1.documents import router as documents_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.corpus import router as corpus_router
 from app.api.v1.graph import router as graph_router
+from app.api.v1.analysis import router as analysis_router
+from app.api.v1.reports import router as reports_router
+from app.api.v1.search import router as search_router
 
 router = APIRouter(prefix="/v1")
 
@@ -17,6 +20,9 @@ router.include_router(projects_router)
 router.include_router(documents_router)
 router.include_router(corpus_router)
 router.include_router(graph_router)
+router.include_router(analysis_router)
+router.include_router(reports_router)
+router.include_router(search_router)
 
 
 @router.get("/health")

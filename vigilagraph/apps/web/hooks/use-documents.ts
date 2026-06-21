@@ -7,7 +7,6 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-// ─── List ────────────────────────────────────────────────
 export function useDocuments(
   projectId: string,
   page = 1,
@@ -17,13 +16,12 @@ export function useDocuments(
     queryKey: ["documents", projectId, page, pageSize],
     queryFn: () =>
       api.get<DocumentListResponse>(
-        `/documents?project_id=${projectId}&page=${page}&page_size=${pageSize}`,
+        `/projects/${projectId}/documents?page=${page}&page_size=${pageSize}`,
       ),
     enabled: !!projectId,
   });
 }
 
-// ─── Upload (uses native fetch for FormData) ─────────────
 export function useUploadDocument() {
   const qc = useQueryClient();
   return useMutation({
@@ -38,7 +36,7 @@ export function useUploadDocument() {
       formData.append("file", file);
       formData.append("project_id", projectId);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/api/documents/upload`, {
+      const res = await fetch(`${API_URL}/api/v1/projects/${projectId}/documents/upload`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
@@ -55,37 +53,35 @@ export function useUploadDocument() {
   });
 }
 
-// ─── Add URL ─────────────────────────────────────────────
 export function useAddUrlDocument() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: { project_id: string; url: string; title?: string }) =>
-      api.post<Document>("/documents/add-url", data),
+      api.post<Document>(`/projects/${data.project_id}/documents/add-url`, { url: data.url, title: data.title }),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["documents", vars.project_id] });
     },
   });
 }
 
-// ─── Delete ──────────────────────────────────────────────
 export function useDeleteDocument() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.delete(`/documents/${id}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["documents"] });
+    mutationFn: ({ projectId, docId }: { projectId: string; docId: string }) =>
+      api.delete(`/projects/${projectId}/documents/${docId}`),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["documents", vars.projectId] });
     },
   });
 }
 
-// ─── Reprocess ───────────────────────────────────────────
 export function useReprocessDocument() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api.post<Document>(`/documents/${id}/reprocess`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["documents"] });
+    mutationFn: ({ projectId, docId }: { projectId: string; docId: string }) =>
+      api.post<Document>(`/projects/${projectId}/documents/${docId}/reprocess`),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["documents", vars.projectId] });
     },
   });
 }

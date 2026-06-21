@@ -68,7 +68,7 @@ async function request<T>(
         : JSON.stringify(body)
       : undefined;
 
-  const response = await fetch(`${BASE_URL}/api${endpoint}`, {
+  const response = await fetch(`${BASE_URL}/api/v1${endpoint}`, {
     ...fetchOptions,
     headers,
     body: fetchBody,
@@ -96,5 +96,24 @@ export const api = {
   },
   delete<T>(endpoint: string, options?: ApiOptions) {
     return request<T>(endpoint, { ...options, method: "DELETE" });
+  },
+  /** Fetch raw response (blob, HTML, etc.) without JSON parsing. */
+  async getRaw(endpoint: string, options?: ApiOptions): Promise<Response> {
+    const { token: explicitToken, headers: extraHeaders, body: _body, ...fetchOptions } = options || {};
+    const token = explicitToken || defaultToken;
+    const headers: Record<string, string> = { ...extraHeaders };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    const response = await fetch(`${BASE_URL}/api/v1${endpoint}`, {
+      ...fetchOptions,
+      method: "GET",
+      headers,
+    } as RequestInit);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({ error: "Unknown error" }));
+      throw new ApiClientError(response.status, body.error || body.detail || "Request failed");
+    }
+    return response;
   },
 };

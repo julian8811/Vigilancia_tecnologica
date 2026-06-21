@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, Text, func
+from sqlalchemy import DateTime,  ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -35,6 +35,7 @@ class Report(Base):
         comment="html | pdf | markdown | docx | json",
     )
     content: Mapped[dict | None] = mapped_column(JSONB, nullable=True, default=dict)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     html_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     pdf_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     markdown_path: Mapped[str | None] = mapped_column(String(500), nullable=True)

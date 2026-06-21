@@ -5,7 +5,7 @@ ParsedGraph → GraphNode / GraphEdge bulk insert via SQLAlchemy.
 
 from __future__ import annotations
 
-import logging
+from structlog import get_logger
 from typing import Any
 
 from sqlalchemy import select
@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from worker.graphify.parser import ParsedGraph, ParsedNode, ParsedEdge
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class GraphDBImporter:

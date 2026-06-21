@@ -32,7 +32,7 @@ class DocumentRepository(BaseRepository[Document]):
         """
         base = select(Document).where(Document.project_id == project_id)
         if document_type:
-            base = base.where(Document.file_type == document_type)
+            base = base.where(Document.document_type == document_type)
         if processing_status:
             base = base.where(Document.processing_status == processing_status)
 
@@ -78,9 +78,9 @@ class DocumentRepository(BaseRepository[Document]):
     async def count_by_type(self, project_id: uuid.UUID) -> dict[str, int]:
         """Return a map of ``document_type → count`` for a project."""
         stmt = (
-            select(Document.file_type, func.count(Document.id))
+            select(Document.document_type, func.count(Document.id))
             .where(Document.project_id == project_id)
-            .group_by(Document.file_type)
+            .group_by(Document.document_type)
         )
         result = await self.session.execute(stmt)
         return {row[0] or "unknown": row[1] for row in result.all()}

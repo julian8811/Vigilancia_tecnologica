@@ -24,9 +24,6 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://vigilagraph:vigilagraph@localhost:5432/vigilagraph"
     DATABASE_URL_SYNC: str = "postgresql+psycopg2://vigilagraph:vigilagraph@localhost:5432/vigilagraph"
 
-    # ── Redis ────────────────────────────────────────────────────
-    REDIS_URL: str = "redis://localhost:6379/0"
-
     # ── Auth / Security ──────────────────────────────────────────
     JWT_SECRET: str = "change-me-to-a-long-random-string"
     JWT_ALGORITHM: str = "HS256"
@@ -34,6 +31,11 @@ class Settings(BaseSettings):
 
     # ── OpenAI ───────────────────────────────────────────────────
     OPENAI_API_KEY: str = ""
+
+    # ── External Source APIs ─────────────────────────────────────
+    SEMANTIC_SCHOLAR_API_KEY: str = ""
+    LENS_API_TOKEN: str = ""
+    GEMINI_API_KEY: str = ""
 
     # ── Object Storage (S3-compatible) ───────────────────────────
     S3_ENDPOINT: str = "http://localhost:9000"
@@ -47,13 +49,6 @@ class Settings(BaseSettings):
 
     # ── Local Storage ────────────────────────────────────────────
     STORAGE_LOCAL_PATH: str = "/tmp/vigilagraph-storage"
-
-    # ── Celery ───────────────────────────────────────────────────
-    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
-    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
-    CELERY_TASK_SERIALIZER: str = "json"
-    CELERY_RESULT_SERIALIZER: str = "json"
-    CELERY_ACCEPT_CONTENT: str = "json"
 
     # ── Logging ──────────────────────────────────────────────────
     LOG_LEVEL: str = "DEBUG"

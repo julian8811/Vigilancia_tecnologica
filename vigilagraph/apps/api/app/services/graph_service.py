@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
 from app.core.config import settings
+from app.core.graph_types import NODE_TYPE_MAP, EDGE_TYPE_MAP
 from app.models.graph import GraphEdge, GraphNode, GraphRun
 from app.repositories.graph_repository import GraphEdgeRepository, GraphNodeRepository, GraphRunRepository
 from app.repositories.project_repository import ProjectRepository
@@ -31,43 +32,6 @@ from app.schemas.graph import (
 from app.services.corpus_service import CorpusService
 
 logger = get_logger(__name__)
-
-# Type maps for Graphify graph.json → internal representation
-NODE_TYPE_MAP: dict[str, str] = {
-    "technology": "technology",
-    "paper": "paper",
-    "author": "author",
-    "institution": "institution",
-    "concept": "concept",
-    "topic": "topic",
-    "method": "method",
-    "application": "application",
-    "material": "material",
-    "organization": "organization",
-    "person": "person",
-    "location": "location",
-    "event": "event",
-    "product": "product",
-    "dataset": "dataset",
-    "tool": "tool",
-    "field": "field",
-    "subfield": "subfield",
-}
-
-EDGE_TYPE_MAP: dict[str, str] = {
-    "related_to": "related_to",
-    "cites": "cites",
-    "authored_by": "authored_by",
-    "developed_by": "developed_by",
-    "uses_method": "uses_method",
-    "mentions": "mentions",
-    "part_of": "part_of",
-    "application_of": "application_of",
-    "improves": "improves",
-    "precedes": "precedes",
-    "collaborates_with": "collaborates_with",
-    "funded_by": "funded_by",
-}
 
 
 class GraphService:
@@ -90,62 +54,77 @@ class GraphService:
         self.corpus_service = CorpusService(db)
 
     async def generate(self, project_id: uuid.UUID, org_id: uuid.UUID) -> GraphGenerateResponse:
-        """Trigger graph generation for a project.
-
-        MVP: runs synchronously (blocking subprocess). Production will
-        delegate to a Celery task with a polling endpoint.
-        """
+        """Trigger graph generation for a project (synchronous subprocess)."""
         project = await self.project_repo.get_with_org_check(project_id, org_id)
         if project is None:
             raise HTTPException(status_code=404, detail="Project not found")
 
-        # 1. Rebuild corpus
-        corpus_ready = await self.corpus_service.ready(project_id, org_id)
-        if not corpus_ready:
-            # Auto-rebuild if corpus doesn't exist yet
-            await self.corpus_service.rebuild(project_id, org_id)
+        # 1. Get documents directly from DB
+        from app.models.document import Document
+        from sqlalchemy import select
+        docs_result = await self.db.execute(
+            select(Document).where(Document.project_id == project_id).limit(200)
+        )
+        docs = docs_result.scalars().all()
 
-        corpus_summary = await self.corpus_service.summary(project_id, org_id)
-        if not corpus_summary.corpus_ready:
-            raise HTTPException(
-                status_code=400,
-                detail="No extracted documents available. Upload and extract documents first.",
-            )
+        if not docs:
+            raise HTTPException(status_code=400, detail="No documents available")
 
-        corpus_path = corpus_summary.corpus_path
-        if corpus_path is None:
-            raise HTTPException(status_code=400, detail="Corpus path not available")
+        # 2. Create flat corpus directory with .md files
+        flat_corpus = Path(settings.STORAGE_LOCAL_PATH) / "flat_corpus" / str(project_id)
+        if flat_corpus.exists():
+            shutil.rmtree(flat_corpus)
+        flat_corpus.mkdir(parents=True, exist_ok=True)
 
-        # 2. Create GraphRun record
+        for doc in docs:
+            if not doc.abstract:
+                continue
+            fname = flat_corpus / f"{doc.id}.md"
+            content = f"# {doc.title or 'Untitled'}\n\n"
+            if doc.authors:
+                try:
+                    authors = json.loads(doc.authors) if isinstance(doc.authors, str) else doc.authors
+                    content += f"**Authors:** {', '.join(str(a) for a in (authors if isinstance(authors, list) else [authors]))}\n\n"
+                except (json.JSONDecodeError, TypeError):
+                    content += f"**Authors:** {doc.authors}\n\n"
+            if doc.publication_year:
+                content += f"**Year:** {doc.publication_year}\n\n"
+            content += doc.abstract
+            fname.write_text(content, encoding='utf-8')
+
+        doc_count = len(list(flat_corpus.glob("*.md")))
+        if doc_count == 0:
+            raise HTTPException(status_code=400, detail="No documents with abstracts available")
+
+        # 3. Create GraphRun record
         run = GraphRun(
             project_id=project_id,
             status="running",
             started_at=datetime.now(UTC),
-            input_corpus_path=corpus_path,
+            input_corpus_path=str(flat_corpus),
         )
         self.db.add(run)
         await self.db.flush()
         await self.db.refresh(run)
 
         run_id = run.id
-        output_dir = str(Path(settings.STORAGE_LOCAL_PATH) / "graphify_output" / str(run_id))
-        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        # Graphify puts output in graphify-out/ inside the input directory
+        graphify_out = Path(str(flat_corpus)) / "graphify-out"
+        output_dir = str(graphify_out)
 
         try:
-            # 3. Run Graphify CLI via subprocess
+            # 4. Run Graphify CLI on the flat corpus
             command = settings.GRAPHIFY_COMMAND
             cmd = [
                 command,
-                corpus_path,
-                "--output-dir", output_dir,
-                "--format", "json",
+                str(flat_corpus),
             ]
 
             logger.info(
                 "graphify_subprocess_start",
                 run_id=run_id,
                 command=command,
-                corpus_path=corpus_path,
+                corpus_path=str(flat_corpus),
             )
 
             proc = await asyncio.create_subprocess_exec(
@@ -185,8 +164,8 @@ class GraphService:
                     status="failed",
                 )
 
-            # 4. Parse graph.json
-            graph_json_path = Path(output_dir) / "graph.json"
+            # 5. Locate graph.json (Graphify puts it in graphify-out/ inside input dir)
+            graph_json_path = graphify_out / "graph.json"
             if not graph_json_path.exists():
                 run.status = "failed"
                 run.error_message = "Graphify completed but graph.json not found in output"
@@ -199,6 +178,10 @@ class GraphService:
                 )
 
             graph_data = json.loads(graph_json_path.read_text())
+
+            # Handle both "edges" and "links" (Graphify uses "links")
+            if "links" in graph_data and "edges" not in graph_data:
+                graph_data["edges"] = graph_data.pop("links")
 
             # 5. Import nodes and edges
             nodes_imported = await self._import_nodes(run_id, graph_data)
@@ -392,7 +375,7 @@ class GraphService:
 
         imported = 0
         for node_data in nodes_raw:
-            node_id = node_data.get("id", str(uuid.uuid4()))
+            node_id = str(node_data.get("id", str(uuid.uuid4()))).replace(".", "_")
             label = node_data.get("label", node_data.get("name", "unknown"))
             node_type = NODE_TYPE_MAP.get(
                 node_data.get("type", "").lower(),
@@ -448,8 +431,8 @@ class GraphService:
                 continue
 
             edge_type = EDGE_TYPE_MAP.get(
-                edge_data.get("type", "").lower(),
-                edge_data.get("type", "related_to"),
+                str(edge_data.get("type", edge_data.get("relation", "related_to"))).lower(),
+                str(edge_data.get("type", edge_data.get("relation", "related_to"))),
             )
             weight = edge_data.get("weight", edge_data.get("strength"))
 
@@ -471,6 +454,13 @@ class GraphService:
 
         await self.db.flush()
         return imported
+
+    async def get_run(self, run_id: uuid.UUID) -> GraphRun:
+        """Fetch a graph run by ID (no org check — caller must verify)."""
+        run = await self.run_repo.get(run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail="Graph run not found")
+        return run
 
     async def _get_run_with_org_check(self, run_id: uuid.UUID, org_id: uuid.UUID) -> GraphRun:
         """Verify a graph run belongs to the user's org via its project."""

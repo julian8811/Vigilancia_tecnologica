@@ -8,17 +8,23 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import logging
 import uuid
 from datetime import datetime, UTC
 from typing import Any
 
 from sqlalchemy import select
+from structlog import get_logger
+
+from app.core.config import settings
 
 from worker.app import app as celery_app
-from worker.tasks.graph_tasks import AsyncTask, worker_session_factory
+from worker.connectors.openalex import OpenAlexConnector
+from worker.connectors.semantic_scholar import SemanticScholarConnector
+from worker.connectors.lens import LensConnector
+from worker.connectors.web import WebScraperConnector, _parse_urls
+from worker.tasks.graph_tasks import get_worker_session_factory
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Maximum documents to fetch per collection run
 MAX_RESULTS_PER_RUN = 500
@@ -77,24 +83,19 @@ def _is_source_selected(strategy: Any, source_name: str) -> bool:
 # Task
 # ---------------------------------------------------------------------------
 
-@celery_app.task(base=AsyncTask, bind=True, name="collect_from_source")
-async def collect_from_source(self, run_id: str) -> dict:
-    """Execute document collection from an external source.
+@celery_app.task(bind=True, name="collect_from_source")
+def collect_from_source(self, run_id: str) -> dict:
+    """Execute document collection from an external source."""
+    return asyncio.run(_collect_from_source_async(run_id))
 
-    Reads a ``CollectionRun`` record, resolves the associated project and
-    search strategy, instantiates the appropriate connector, fetches
-    documents, deduplicates against existing project documents, and batch-
-    inserts new ones.
 
-    Parameters
-    ----------
-    run_id : str
-        UUID of the ``CollectionRun`` to execute.
-    """
+async def _collect_from_source_async(run_id: str) -> dict:
+    """Async implementation of document collection."""
     run_uuid = uuid.UUID(run_id)
     logger.info("collect_from_source_started", run_id=run_id)
 
-    async with worker_session_factory() as db:
+    session_factory = get_worker_session_factory()
+    async with session_factory() as db:
         try:
             # ── 1. Resolve the CollectionRun ─────────────────────────────
             from app.models.collection_run import CollectionRun
@@ -143,9 +144,20 @@ async def collect_from_source(self, run_id: str) -> dict:
             )
 
             if run.source_name == "openalex":
-                from worker.connectors.openalex import OpenAlexConnector
-
                 connector = OpenAlexConnector()
+            elif run.source_name == "semantic_scholar":
+                connector = SemanticScholarConnector(
+                    api_key=settings.SEMANTIC_SCHOLAR_API_KEY or None,
+                )
+            elif run.source_name == "lens":
+                if not settings.LENS_API_TOKEN:
+                    raise ValueError("LENS_API_TOKEN is not configured")
+                connector = LensConnector(api_token=settings.LENS_API_TOKEN)
+            elif run.source_name == "web":
+                connector = WebScraperConnector()
+                urls = _parse_urls(strategy.scrape_urls)
+                if not urls:
+                    raise ValueError("No URLs configured for web scraping (search_strategy.scrape_urls)")
             else:
                 raise ValueError(f"Unsupported source: {run.source_name}")
 
@@ -186,7 +198,12 @@ async def collect_from_source(self, run_id: str) -> dict:
             new_documents: list[Document] = []
 
             try:
-                async for raw_doc in connector.fetch(query, max_results=MAX_RESULTS_PER_RUN):
+                if run.source_name == "web":
+                    doc_stream = connector.scrape_urls(urls)
+                else:
+                    doc_stream = connector.fetch(query, max_results=MAX_RESULTS_PER_RUN)
+
+                async for raw_doc in doc_stream:
                     docs_found += 1
 
                     # 7a. Dedup by (source_name, source_id)
@@ -272,6 +289,8 @@ async def collect_from_source(self, run_id: str) -> dict:
                 docs_found=docs_found,
                 docs_inserted=docs_inserted,
             )
+
+            await db.commit()
 
             return {
                 "status": "completed",

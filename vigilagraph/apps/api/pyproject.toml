@@ -19,12 +19,19 @@ dependencies = [
     "structlog>=24.4",
     "python-jose[cryptography]>=3.3",
     "passlib[bcrypt]>=1.7",
-    "bcrypt>=4.0",
+    "bcrypt>=4.0,<5.0",
     "python-multipart>=0.0.17",
     "tenacity>=9.0",
-    "redis>=5.2",
-    "celery>=5.4",
     "boto3>=1.36",
+    "pgvector>=0.3",
+    "PyMuPDF>=1.25",
+    "slowapi>=0.1",
+    "mangum>=0.19",
+    "trafilatura>=1.12",
+    "openai>=1.55",
+    "openpyxl>=3.1",
+    "python-docx>=1.1",
+    "pypdf>=5.1",
 ]
 
 [tool.uv]

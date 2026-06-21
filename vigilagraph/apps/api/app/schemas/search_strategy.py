@@ -18,6 +18,7 @@ class SearchStrategyCreate(BaseModel):
         None, description="openalex | semantic_scholar | lens | web",
     )
     boolean_queries: str | None = None
+    scrape_urls: str | None = None
     generated_by_ai: bool = False
 
 
@@ -29,6 +30,7 @@ class SearchStrategyUpdate(BaseModel):
     excluded_terms: str | None = None
     sources_selected: str | None = None
     boolean_queries: str | None = None
+    scrape_urls: str | None = None
     generated_by_ai: bool | None = None
 
 
@@ -44,6 +46,7 @@ class SearchStrategyResponse(BaseModel):
     excluded_terms: str | None = None
     sources_selected: str | None = None
     boolean_queries: str | None = None
+    scrape_urls: str | None = None
     generated_by_ai: bool
     created_at: datetime
     updated_at: datetime
