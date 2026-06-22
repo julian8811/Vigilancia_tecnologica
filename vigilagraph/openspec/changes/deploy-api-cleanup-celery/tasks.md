@@ -18,55 +18,57 @@ Chain strategy: pending
 
 All ~180 changed lines are mechanical (copy, inline, remove). Pure refactor, no behavioral changes. Fits easily in one PR.
 
-**Note — design vs spec conflict**: Design decides to **inline** the 3 helper functions into `collection.py` (rejecting separate `collection_helpers.py`). Spec says create `collection_helpers.py`. Follow the design — it's the final technical authority.
+**Note — design vs spec conflict**: Design decides to **inline** the 3 helper functions into `collection.py` (rejecting separate `collection_helpers.py`). Spec says create `collection_helpers.py`. **User chose separate file** — override applied.
 
 ---
 
 ## Phase 1: Foundation — Move worker packages to API
 
-- [ ] **1.1** Create `apps/api/app/connectors/` — copy `__init__.py`, `base.py`, `openalex.py`, `semantic_scholar.py`, `lens.py`, `web.py` from `worker/worker/connectors/` as-is
-- [ ] **1.2** Create `apps/api/app/ai/` — copy `__init__.py`, `client.py`, `prompts.py`, `schemas.py`, `service.py` from `worker/worker/ai/` as-is
-- [ ] **1.3** Verify: `python -c "from app.connectors.openalex import OpenAlexConnector; from app.ai.service import AnalysisService"` resolves without error from `apps/api/`
+- [x] **1.1** Create `apps/api/app/connectors/` — copy `__init__.py`, `base.py`, `openalex.py`, `semantic_scholar.py`, `lens.py`, `web.py` from `worker/worker/connectors/` as-is
+- [x] **1.2** Create `apps/api/app/ai/` — copy `__init__.py`, `client.py`, `prompts.py`, `schemas.py`, `service.py` from `worker/worker/ai/` as-is
+- [x] **1.3** Verify: `python -c "from app.connectors.openalex import OpenAlexConnector; from app.ai.service import AnalysisService"` resolves without error from `apps/api/`
 
 ## Phase 2: Core — Extract helpers, update imports
 
-- [ ] **2.1** Paste the 3 helper functions (`_compute_checksum`, `_build_search_query`, `_is_source_selected` from `collection_tasks.py` lines 40–79) into `apps/api/app/tasks/collection.py` above `run_collection()`
-- [ ] **2.2** In `collection.py`: change 4 connector imports (`from worker.connectors.*` → `from app.connectors.*`); remove the `from worker.tasks.collection_tasks import ...` line
-- [ ] **2.3** In `analysis.py`: change `from worker.ai.service import AnalysisService` → `from app.ai.service import AnalysisService`
+- [x] **2.1** Created `apps/api/app/tasks/collection_helpers.py` with 3 helpers. **User override**: separate file, not inlined (was `collection.py` inline in original task)
+- [x] **2.2** In `collection.py`: changed 4 connector imports (`from worker.connectors.*` → `from app.connectors.*`); changed `from worker.tasks.collection_tasks` → `from app.tasks.collection_helpers`
+- [x] **2.3** In `analysis.py`: changed `from worker.ai.service import AnalysisService` → `from app.ai.service import AnalysisService`
+- [x] **2.4** (implied by 3.3) Updated imports in copied connector files (`openalex.py`, `semantic_scholar.py`, `lens.py`): `worker.connectors.base` → `app.connectors.base`
+- [x] **2.5** (implied by 3.3) Updated imports in copied service.py: `worker.ai.*` → `app.ai.*`
 
 ## Phase 3: Delete — Remove worker directory
 
-- [ ] **3.1** Delete entire `apps/worker/` tree (connectors/, ai/, tasks/, graphify/, tests/, app.py, Dockerfile, pyproject.toml, uv.lock, .dockerignore, __pycache__/)
-- [ ] **3.2** Delete `infra/docker/worker.Dockerfile`
-- [ ] **3.3** Verify: `grep -r 'from worker' apps/api/` returns zero matches; `ls apps/worker/` fails (gone)
+- [x] **3.1** Delete entire `apps/worker/` tree (connectors/, ai/, tasks/, graphify/, tests/, app.py, Dockerfile, pyproject.toml, uv.lock, .dockerignore, __pycache__/)
+- [x] **3.2** Delete `infra/docker/worker.Dockerfile`
+- [x] **3.3** Verify: `grep -r 'from worker' apps/api/` → 0 matches; `ls apps/worker/` fails (gone)
 
 ## Phase 4: Infrastructure — Clean docker-compose, start.sh
 
-- [ ] **4.1** Root `docker-compose.yml`: remove `redis:` service block, `worker:` service block, `redis_data:` volume, `REDIS_URL` from api env, `depends_on: redis` from api
-- [ ] **4.2** `infra/docker/docker-compose.yml`: remove `redis:` service block, `redis_data:` volume
-- [ ] **4.3** `infra/docker-compose.prod.yml`: remove `redis:` service, `worker:` service, `redisdata:` volume, all CELERY_* env vars, `depends_on: redis` from api
-- [ ] **4.4** `infra/docker/start.sh`: remove Redis daemon start (lines 4–11), Celery background start (line 17); keep alembic + uvicorn
+- [x] **4.1** Root `docker-compose.yml`: removed `redis:` service block, `worker:` service block, `redis_data:` volume, `REDIS_URL` from api env, `depends_on: redis` from api
+- [x] **4.2** `infra/docker/docker-compose.yml`: removed `redis:` service block, `redis_data:` volume
+- [x] **4.3** `infra/docker-compose.prod.yml`: removed `redis:` service, `worker:` service, `redisdata:` volume, all CELERY_* env vars, `depends_on: redis` from api
+- [x] **4.4** `infra/docker/start.sh`: removed Redis daemon start + Celery background start; kept alembic + uvicorn
 
 ## Phase 5: Infrastructure — Clean env, CI, Makefile, pre-commit, config
 
-- [ ] **5.1** `.env` and `local.env`: remove `REDIS_URL` + all 5 `CELERY_*` lines
-- [ ] **5.2** `.env.example`: remove `CELERY_RESULT_SERIALIZER`; rebuild as complete template with all active vars (DB, JWT, S3, API keys, frontend URL) — no Celery/Redis
-- [ ] **5.3** `Makefile`: remove `cd apps/worker` lines from `install`, `lint`, `test`; remove `run-worker` target
-- [ ] **5.4** `.github/workflows/ci.yml`: remove entire `worker:` job; change `e2e` needs from `[api, worker, frontend]` → `[api, frontend]`
-- [ ] **5.5** `.pre-commit-config.yaml`: change `files: ^apps/(api|worker)/` → `files: ^apps/api/` in both ruff hooks
-- [ ] **5.6** `openspec/config.yaml`: remove Celery/Redis/Valkey from context string and stack sections; set `task_queue: none`; remove worker entry
+- [x] **5.1** `.env` and `local.env`: removed `REDIS_URL` + all 5 `CELERY_*` lines
+- [x] **5.2** `.env.example`: rebuilt as complete template with DB, JWT, S3, API keys, frontend URL — no Celery/Redis
+- [x] **5.3** `Makefile`: removed `cd apps/worker` lines from `install`, `lint`, `test`; removed `run-worker` target
+- [x] **5.4** `.github/workflows/ci.yml`: removed entire `worker:` job; changed `e2e` needs from `[api, worker, frontend]` → `[api, frontend]`
+- [x] **5.5** `.pre-commit-config.yaml`: changed `files: ^apps/(api|worker)/` → `files: ^apps/api/` in both ruff hooks
+- [x] **5.6** `openspec/config.yaml`: removed Celery/Redis/Valkey from context string and stack sections; set `task_queue: none`; removed worker entry
 
 ## Phase 6: Verification
 
-- [ ] **6.1** Run `uv run pytest tests/ -v` in `apps/api/` — all tests pass
-- [ ] **6.2** Grep residual: `grep -r 'from worker' apps/api/` → 0 matches; `grep -rE '(CELERY_|REDIS_URL)' .env .env.example local.env` → 0 matches
-- [ ] **6.3** `docker compose config` on root and infra docker-compose files succeeds with no redis/worker services
+- [x] **6.1** Run `uv run pytest tests/ -v` in `apps/api/` — **28 passed, 1 skipped** (test_upload_pdf requires S3/MinIO)
+- [x] **6.2** Grep residual: `grep -r 'from worker' apps/api/` → 0 matches; `grep -rE '(CELERY_|REDIS_URL)' .env .env.example local.env` → 0 matches
+- [x] **6.3** `docker compose config` on root and infra docker-compose files: YAML validated with Python (docker segfaults on this machine) — no redis/worker services in any compose file
 
 ## Risks
 
 | Risk | Likelihood | Mitigation |
 |------|------------|------------|
-| **Design vs spec conflict**: design says inline helpers, spec says separate file | High | Follow design — inline. Noted for executor. |
+| **Design vs spec conflict**: design says inline helpers, spec says separate file | Mitigated | User chose separate file — override applied. |
 | `collection.py` imports from `app.models.*` during 2.1 before 1.1 completes | None | Task 1 must complete before Task 2. Sequential dependency is enforced. |
 | Missing dep in `api/pyproject.toml` for moved code | Low | Already audited — all deps present (httpx, boto3, tenacity, openai, etc.) |
 | `.env.example` template still references removed vars | Low | Verification sweep (task 6.2) catches this |

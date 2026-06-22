@@ -41,7 +41,12 @@ dev-dependencies = [
     "pytest-cov>=6.0",
     "ruff>=0.8",
     "mypy>=1.13",
+    "aiosqlite>=0.22.1",
+    "pysqlite3-binary>=0.5.4.post2",
 ]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
 
 [build-system]
 requires = ["setuptools>=75"]
