@@ -2,31 +2,32 @@
 project: VigilaGraph IA
 repo: vigilancia
 created: 2026-06-18
+updated: 2026-06-21
 artifact_store: hybrid
 
 context: |
-  VigilaGraph IA — AI-powered surveillance analysis platform.
-  Python/FastAPI backend with SQLAlchemy 2 + Alembic, Celery+Redis task queue.
-  Next.js 14+ (App Router) frontend with TypeScript, shadcn/ui, TanStack Query,
+  VigilaGraph IA — AI-powered technology surveillance analysis platform.
+  Python/FastAPI backend with SQLAlchemy 2 + Alembic, Celery + Redis task queue.
+  Next.js 14 (App Router) frontend with TypeScript, shadcn/ui, TanStack Query,
   Cytoscape.js for graph visualization. PostgreSQL + pgvector for embeddings,
-  MinIO/Railway Buckets for S3 storage. Deployed on Railway.app.
+  MinIO/Railway Buckets for S3-compatible object storage. Deployed on Railway.app.
+  Monorepo layout under viglagraph/ with apps/api/, apps/web/, apps/worker/.
 
 stack:
   backend:
     language: Python 3.12+
-    framework: FastAPI
+    framework: FastAPI (Mangum-compatible)
     orm: SQLAlchemy 2 + Alembic
     validation: Pydantic v2
     task_queue: Celery + Redis/Valkey
   frontend:
-    framework: Next.js 14+ (App Router)
-    language: TypeScript
-    styling: Tailwind CSS
-    ui_library: shadcn/ui
-    state_query: TanStack Query
-    table: TanStack Table
+    framework: Next.js 14 (App Router)
+    language: TypeScript 5.x
+    styling: Tailwind CSS 3 + tailwindcss-animate
+    ui_library: shadcn/ui (Radix primitives)
     forms: React Hook Form + Zod
-    graph: Cytoscape.js
+    state_query: TanStack Query + TanStack Table
+    graph: Cytoscape.js + cytoscape-dagre
     icons: Lucide React
     toast: Sonner
   database:
@@ -36,11 +37,13 @@ stack:
     storage: MinIO / Railway Buckets (S3-compatible)
   infrastructure:
     platform: Railway.app
+    ci: GitHub Actions (ruff, mypy, tsc, pytest, vitest, Playwright)
+    pre_commit: ruff, ruff-format, mypy, tsc, vitest
     graph_tool: Graphify (uv tool install graphifyy)
 
 testing:
-  strict_tdd: false
-  reason: "No test runner detected — project workspace is empty. Configure test runners (pytest + pytest-asyncio for backend, Vitest + Testing Library + Playwright for frontend) before enabling Strict TDD Mode."
+  strict_tdd: true
+  reason: "All test layers detected: pytest + pytest-asyncio + httpx (backend unit/integration), Vitest + @testing-library/react + happy-dom (frontend unit/integration), Playwright (E2E). Pre-commit hooks enforce test run and type checking."
   capabilities:
     backend:
       runner: pytest + pytest-asyncio
@@ -51,14 +54,14 @@ testing:
         e2e: false
     frontend:
       runner: Vitest + Testing Library
-      coverage: vitest --coverage
+      coverage: vitest --coverage (not yet configured)
       e2e: Playwright
       layers:
         unit: true
         integration: true
         e2e: true
 
-strict_tdd: false
+strict_tdd: true
 
 phase_rules:
   proposal:
