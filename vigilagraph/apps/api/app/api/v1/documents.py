@@ -83,7 +83,7 @@ async def add_url_document(
     """Add a URL as a document source for a project.
 
     The URL is stored with ``processing_status='pending'``. Actual web
-    fetching will be handled by a Celery worker (future change).
+    fetching is handled asynchronously.
     """
     service = _get_service(db)
     return await service.add_url(project_id, current_user.organization_id, body)

@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 
     # ── Startup ──────────────────────────────────────────────────
     # Database engine is lazily initialised via the session factory.
-    # Add any other startup tasks here (e.g. connect to S3, verify Celery).
+    # Add any other startup tasks here (e.g. connect to S3).
 
     yield
 

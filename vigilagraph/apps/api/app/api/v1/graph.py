@@ -40,7 +40,7 @@ async def generate_graph(
 ) -> GraphGenerateResponse:
     """Trigger knowledge-graph generation via Graphify.
 
-    MVP: runs synchronously. Production will use Celery with polling.
+    MVP: runs synchronously via subprocess.
     """
     service = _get_service(db)
     return await service.generate(project_id, current_user.organization_id)

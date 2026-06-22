@@ -206,8 +206,7 @@ class DocumentService:
         """Add a URL as a document source.
 
         Creates a document with ``document_type='webpage'`` and
-        ``processing_status='pending'``. Actual web fetching happens in a
-        Celery worker (future change).
+        ``processing_status='pending'``.         Actual web fetching is handled asynchronously.
         """
         project = await self._get_project_or_404(project_id, org_id)
 
@@ -271,7 +270,7 @@ class DocumentService:
     async def reprocess_document(self, document_id: uuid.UUID, org_id: uuid.UUID) -> DocumentResponse:
         """Reset ``processing_status`` to ``pending`` for reprocessing.
 
-        The actual reprocessing triggers in a worker (future Celery task).
+        The actual reprocessing triggers asynchronously.
         """
         doc = await self.repo.get(document_id)
         if doc is None:
