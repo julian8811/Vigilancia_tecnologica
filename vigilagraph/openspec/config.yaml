@@ -6,8 +6,8 @@ artifact_store: hybrid
 
 context: |
   VigilaGraph IA — AI-powered surveillance analysis platform.
-  3-app monorepo: FastAPI backend (Python 3.12, SQLAlchemy async, PostgreSQL+pgvector,
-  Celery+Redis), Celery worker (httpx, trafilatura, OpenAI), Next.js 14.2 frontend
+  2-app monorepo: FastAPI backend (Python 3.12, SQLAlchemy async, PostgreSQL+pgvector,
+  httpx, trafilatura, OpenAI), Next.js 14.2 frontend
   (React 18, TypeScript, TanStack Query, shadcn/ui, Cytoscape.js).
   Deployed on Railway.app (nixpacks) with Docker Compose for local dev.
   MinIO/Railway Buckets for S3 storage. Alembic for migrations.
@@ -18,13 +18,10 @@ stack:
     framework: FastAPI
     orm: SQLAlchemy 2 async + Alembic
     validation: Pydantic v2
-    task_queue: Celery + Redis/Valkey
+    task_queue: none (direct async calls)
     auth: python-jose + passlib + bcrypt
     storage: boto3 (S3-compatible)
     pdf: PyMuPDF
-  worker:
-    language: Python 3.12+
-    framework: Celery
     http: httpx + tenacity
     scraping: trafilatura + scrapling
     llm: openai
@@ -41,12 +38,11 @@ stack:
     toast: Sonner
   database:
     primary: PostgreSQL + pgvector
-    cache_queue: Redis/Valkey
     storage: MinIO / Railway Buckets (S3-compatible)
     test_db: SQLite (pysqlite3-binary + aiosqlite, JSONB shim)
   infrastructure:
     platform: Railway.app (nixpacks)
-    local: Docker Compose (PostgreSQL, Redis, MinIO, Nginx)
+    local: Docker Compose (PostgreSQL, MinIO, Nginx)
     graph_tool: Graphify (uv tool install graphifyy)
 
 testing:
@@ -59,13 +55,6 @@ testing:
       layers:
         unit: true
         integration: true
-        e2e: false
-    worker:
-      runner: pytest + pytest-asyncio
-      coverage: pytest-cov
-      layers:
-        unit: true
-        integration: false
         e2e: false
     frontend:
       runner: Vitest 2.1 + @testing-library/react + happy-dom

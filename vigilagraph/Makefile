@@ -5,17 +5,14 @@ help: ## Show this help
 
 install: ## Install all dependencies
 	cd apps/api && uv sync --dev
-	cd apps/worker && uv sync --dev
 	cd apps/web && bun install
 
 lint: ## Run all linters
 	cd apps/api && uv run ruff check app/ && uv run mypy app/ --ignore-missing-imports
-	cd apps/worker && uv run ruff check worker/
 	cd apps/web && npx tsc --noEmit
 
 test: ## Run all tests
 	cd apps/api && uv run pytest tests/ -v
-	cd apps/worker && PYTHONPATH=../api uv run pytest tests/ -v
 	cd apps/web && npx vitest run
 
 test-cov: ## Run tests with coverage
@@ -32,9 +29,6 @@ dev-down: ## Stop development environment
 
 run-api: ## Run API locally (dev mode)
 	cd apps/api && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-run-worker: ## Run Celery worker locally
-	cd apps/worker && PYTHONPATH=../api uv run celery -A worker.app worker --loglevel=info
 
 run-web: ## Run frontend dev server
 	cd apps/web && bun run dev
