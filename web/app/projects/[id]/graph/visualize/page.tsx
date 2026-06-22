@@ -109,7 +109,7 @@ export default function GraphVisualizePage() {
     );
   }
 
-  if (!latestRun || allNodes.length === 0) {
+  if (!latestRun || (allNodes.length === 0 && !dataLoading)) {
     return (
       <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-center">
