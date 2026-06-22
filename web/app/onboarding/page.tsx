@@ -30,8 +30,8 @@ import {
 import { BarChart3, Loader2, ArrowRight, Check, Sparkles } from "lucide-react";
 
 const projectSchema = z.object({
-  name: z.string().min(1, "Project name is required").max(200),
-  topic: z.string().min(1, "Research topic is required").max(500),
+  name: z.string().min(1, "El nombre del proyecto es obligatorio").max(200),
+  topic: z.string().min(1, "El tema de investigación es obligatorio").max(500),
   description: z.string().max(2000).optional(),
   surveillance_type: z.enum(["tecnologica", "cientifica", "competitiva", "estrategica"]),
 });
@@ -92,7 +92,7 @@ export default function OnboardingPage() {
       });
       setStep("done");
     } catch (err: any) {
-      toast.error(err?.detail || "Failed to create project");
+      toast.error(err?.detail || "Error al crear el proyecto");
     }
   };
 
@@ -108,38 +108,38 @@ export default function OnboardingPage() {
             <div className="flex justify-center">
               <BarChart3 className="h-12 w-12 text-primary" />
             </div>
-            <CardTitle className="text-3xl">Welcome to VigilaGraph</CardTitle>
+            <CardTitle className="text-3xl">Bienvenido a VigilaGraph</CardTitle>
             <CardDescription className="text-base">
-              AI-powered technology surveillance. Create your first project
-              to start monitoring research trends, technologies, and opportunities.
+              Vigilancia tecnológica con IA. Creá tu primer proyecto
+              para empezar a monitorear tendencias, tecnologías y oportunidades.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-left text-sm text-muted-foreground">
             <div className="flex items-start gap-3">
               <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
               <div>
-                <p className="font-medium text-foreground">Define your topic</p>
-                <p>We'll search academic databases and the web for relevant documents.</p>
+                <p className="font-medium text-foreground">Definí tu tema</p>
+                <p>Buscamos en bases de datos académicas y la web documentos relevantes.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
               <div>
-                <p className="font-medium text-foreground">AI-powered analysis</p>
-                <p>Identify technologies, trends, actors, and opportunities automatically.</p>
+                <p className="font-medium text-foreground">Análisis con IA</p>
+                <p>Identificá tecnologías, tendencias, actores y oportunidades automáticamente.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
               <div>
-                <p className="font-medium text-foreground">Knowledge graphs</p>
-                <p>Visualize connections between concepts with interactive graphs.</p>
+                <p className="font-medium text-foreground">Grafos de conocimiento</p>
+                <p>Visualizá conexiones entre conceptos con grafos interactivos.</p>
               </div>
             </div>
           </CardContent>
           <CardFooter>
             <Button className="w-full gap-2" size="lg" onClick={() => setStep("create")}>
-              Create your first project
+              Creá tu primer proyecto
               <ArrowRight className="h-4 w-4" />
             </Button>
           </CardFooter>
@@ -149,18 +149,18 @@ export default function OnboardingPage() {
       {step === "create" && (
         <Card className="w-full max-w-lg">
           <CardHeader>
-            <CardTitle>Create your first project</CardTitle>
+            <CardTitle>Creá tu primer proyecto</CardTitle>
             <CardDescription>
-              Tell us what you want to research — AI will help with the rest.
+              Contanos qué querés investigar — la IA se encarga del resto.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Project name</Label>
+                <Label htmlFor="name">Nombre del proyecto</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Biological pest control R&D"
+                  placeholder="Ej: Control biológico de plagas I+D"
                   {...register("name")}
                 />
                 {errors.name && (
@@ -168,10 +168,10 @@ export default function OnboardingPage() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="topic">Research topic</Label>
+                <Label htmlFor="topic">Tema de investigación</Label>
                 <Input
                   id="topic"
-                  placeholder="e.g., Biological pest control using natural enemies"
+                  placeholder="Ej: Control biológico usando enemigos naturales"
                   {...register("topic")}
                 />
                 {errors.topic && (
@@ -179,16 +179,16 @@ export default function OnboardingPage() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description (optional)</Label>
+                <Label htmlFor="description">Descripción (opcional)</Label>
                 <Textarea
                   id="description"
-                  placeholder="Brief description of your research goals..."
+                  placeholder="Breve descripción de tus objetivos de investigación..."
                   rows={3}
                   {...register("description")}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Surveillance type</Label>
+                <Label>Tipo de vigilancia</Label>
                 <Select
                   value={surveillanceType}
                   onValueChange={(v) =>
@@ -199,10 +199,10 @@ export default function OnboardingPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="tecnologica">Technological</SelectItem>
-                    <SelectItem value="cientifica">Scientific</SelectItem>
-                    <SelectItem value="competitiva">Competitive</SelectItem>
-                    <SelectItem value="estrategica">Strategic</SelectItem>
+                    <SelectItem value="tecnologica">Tecnológica</SelectItem>
+                    <SelectItem value="cientifica">Científica</SelectItem>
+                    <SelectItem value="competitiva">Competitiva</SelectItem>
+                    <SelectItem value="estrategica">Estratégica</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -213,7 +213,7 @@ export default function OnboardingPage() {
                 variant="outline"
                 onClick={() => setStep("welcome")}
               >
-                Back
+                Volver
               </Button>
               <Button type="submit" className="flex-1 gap-2" disabled={createProject.isPending}>
                 {createProject.isPending ? (
@@ -221,7 +221,7 @@ export default function OnboardingPage() {
                 ) : (
                   <Sparkles className="h-4 w-4" />
                 )}
-                Create project
+                Crear proyecto
               </Button>
             </CardFooter>
           </form>
@@ -234,10 +234,10 @@ export default function OnboardingPage() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
               <Check className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Project created!</CardTitle>
+            <CardTitle className="text-2xl">¡Proyecto creado!</CardTitle>
             <CardDescription className="text-base">
-              Head to your dashboard to configure the search strategy, collect
-              documents, and start analyzing.
+              Andá al panel para configurar la estrategia de búsqueda, recolectar
+              documentos y empezar a analizar.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-left text-sm text-muted-foreground">
@@ -246,8 +246,8 @@ export default function OnboardingPage() {
                 1
               </span>
               <div>
-                <p className="font-medium text-foreground">Configure search</p>
-                <p>Open your project and click "Search Strategy" to define keywords and sources.</p>
+                <p className="font-medium text-foreground">Configurar búsqueda</p>
+                <p>Abrí tu proyecto y hacé clic en "Estrategia de búsqueda" para definir palabras clave y fuentes.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -255,8 +255,8 @@ export default function OnboardingPage() {
                 2
               </span>
               <div>
-                <p className="font-medium text-foreground">Collect documents</p>
-                <p>Click "Collect Now" to fetch documents from academic databases.</p>
+                <p className="font-medium text-foreground">Recolectar documentos</p>
+                <p>Hacé clic en "Recolectar" para obtener documentos de bases de datos académicas.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -264,14 +264,14 @@ export default function OnboardingPage() {
                 3
               </span>
               <div>
-                <p className="font-medium text-foreground">Generate insights</p>
-                <p>Build the knowledge graph, run AI analysis, and generate reports.</p>
+                <p className="font-medium text-foreground">Generar hallazgos</p>
+                <p>Construí el grafo de conocimiento, ejecutá el análisis con IA y generá informes.</p>
               </div>
             </div>
           </CardContent>
           <CardFooter>
             <Button className="w-full gap-2" size="lg" onClick={goToProject}>
-              Go to dashboard
+              Ir al panel
               <ArrowRight className="h-4 w-4" />
             </Button>
           </CardFooter>

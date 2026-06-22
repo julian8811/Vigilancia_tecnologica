@@ -53,17 +53,17 @@ export default function ReportsPage() {
   const [reportType, setReportType] = useState("complete");
 
   const handleGenerate = async () => {
-    const reportTitle = title || `Report - ${project?.name || projectId}`;
+    const reportTitle = title || `Informe - ${project?.name || projectId}`;
     try {
       await generateReport.mutateAsync({
         projectId,
         title: reportTitle,
         reportType,
       });
-      toast.success("Report generated");
+      toast.success("Informe generado");
       setTitle("");
     } catch (err: any) {
-      toast.error(err?.detail || "Failed to generate report");
+      toast.error(err?.detail || "Error al generar informe");
     }
   };
 
@@ -83,29 +83,29 @@ export default function ReportsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileBarChart className="h-5 w-5" />
-            Generate Report
+            Generar informe
           </CardTitle>
           <CardDescription>
-            Create a surveillance report from your project data and analysis.
+            Creá un informe de vigilancia a partir de los datos y análisis de tu proyecto.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-3">
             <Input
-              placeholder="Report title"
+              placeholder="Título del informe"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="flex-1"
             />
             <Select value={reportType} onValueChange={setReportType}>
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="Report type" />
+                <SelectValue placeholder="Tipo de informe" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="complete">Complete</SelectItem>
-                <SelectItem value="executive">Executive</SelectItem>
-                <SelectItem value="academic">Academic</SelectItem>
-                <SelectItem value="business">Business</SelectItem>
+                <SelectItem value="complete">Completo</SelectItem>
+                <SelectItem value="executive">Ejecutivo</SelectItem>
+                <SelectItem value="academic">Académico</SelectItem>
+                <SelectItem value="business">Empresarial</SelectItem>
               </SelectContent>
             </Select>
             <Button
@@ -117,7 +117,7 @@ export default function ReportsPage() {
               ) : (
                 <Play className="mr-2 h-4 w-4" />
               )}
-              Generate
+              Generar
             </Button>
           </div>
         </CardContent>
@@ -126,9 +126,9 @@ export default function ReportsPage() {
       {/* Reports list */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Generated Reports</CardTitle>
+          <CardTitle className="text-lg">Informes generados</CardTitle>
           <CardDescription>
-            Download and manage your surveillance reports.
+            Descargá y administrá tus informes de vigilancia.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -142,18 +142,18 @@ export default function ReportsPage() {
             <div className="py-12 text-center">
               <FileBarChart className="mx-auto h-12 w-12 text-muted-foreground/50" />
               <p className="mt-4 text-sm text-muted-foreground">
-                No reports yet. Click &quot;Generate&quot; to create one.
+                No hay informes todavía. Hacé clic en &quot;Generar&quot; para crear uno.
               </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Generated</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>Título</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Generado</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -178,7 +178,7 @@ export default function ReportsPage() {
                     <TableCell>
                       <div className="flex gap-2">
                         {report.html_path && (
-                          <Button variant="ghost" size="icon" asChild title="View HTML">
+                          <Button variant="ghost" size="icon" asChild title="Ver HTML">
                             <a
                               href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/projects/${projectId}/reports/${report.id}/download/html`}
                               target="_blank"
@@ -188,7 +188,7 @@ export default function ReportsPage() {
                           </Button>
                         )}
                         {report.pdf_path && (
-                          <Button variant="ghost" size="icon" asChild title="Download PDF">
+                          <Button variant="ghost" size="icon" asChild title="Descargar PDF">
                             <a
                               href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/projects/${projectId}/reports/${report.id}/download/pdf`}
                               download
@@ -198,7 +198,7 @@ export default function ReportsPage() {
                           </Button>
                         )}
                         {report.markdown_path && (
-                          <Button variant="ghost" size="icon" asChild title="Download Markdown">
+                          <Button variant="ghost" size="icon" asChild title="Descargar Markdown">
                             <a
                               href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/projects/${projectId}/reports/${report.id}/download/markdown`}
                               download

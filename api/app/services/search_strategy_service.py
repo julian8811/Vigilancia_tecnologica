@@ -43,7 +43,7 @@ class SearchStrategyService:
     async def get_strategy(self, project_id: uuid.UUID, org_id: uuid.UUID) -> SearchStrategyResponse | None:
         project = await self.project_repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
         strategy = await self.repo.get_by_project(project_id)
         if strategy is None:
             return None
@@ -54,7 +54,7 @@ class SearchStrategyService:
     ) -> SearchStrategyResponse:
         project = await self.project_repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         create_schema = SearchStrategyCreate(**schema.model_dump(exclude_unset=True))
         strategy = await self.repo.upsert(project_id, create_schema)
@@ -64,7 +64,7 @@ class SearchStrategyService:
     async def generate_strategy(self, project_id: uuid.UUID, org_id: uuid.UUID) -> SearchStrategyResponse:
         project = await self.project_repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         topic = project.topic or project.name
         description = project.description or ""

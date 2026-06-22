@@ -101,7 +101,7 @@ class DocumentService:
         # Read bytes (with size check)
         content = await file.read()
         if len(content) > MAX_FILE_SIZE:
-            raise HTTPException(status_code=413, detail=f"File exceeds {MAX_FILE_SIZE // (1024*1024)} MB limit")
+            raise HTTPException(status_code=413, detail=f"El archivo supera el límite de {MAX_FILE_SIZE // (1024*1024)} MB")
 
         # Validate PDF header
         if ext == ".pdf":
@@ -115,13 +115,13 @@ class DocumentService:
         if existing is not None:
             raise HTTPException(
                 status_code=409,
-                detail=f"A document with the same content already exists in this project: '{existing.title or existing.id}'",
+                detail=f"Ya existe un documento con el mismo contenido en este proyecto: '{existing.title or existing.id}'",
             )
 
         # Create document record (status = extracting)
         doc = Document(
             project_id=project_id,
-            title=file.filename or "untitled",
+            title=file.filename or "sin_titulo",
             file_type=ext.lstrip("."),
             checksum=checksum,
             processing_status="extracting",
@@ -161,7 +161,7 @@ class DocumentService:
             else:
                 logger.warning("document_extraction_empty", document_id=doc_id)
                 doc.processing_status = "extracted"
-                doc.metadata_json = {"extraction_warning": "No extractable text found"}
+                doc.metadata_json = {"extraction_warning": "No se encontró texto extraíble"}
 
             # Store PDF metadata
             meta = {}
@@ -196,7 +196,7 @@ class DocumentService:
         )
 
         return DocumentUploadResponse(
-            message="Document uploaded successfully",
+            message="Documento subido exitosamente",
             document=DocumentResponse.model_validate(doc),
             text_extracted=text_extracted,
             text_length=len(text_result.text) if text_extracted else None,
@@ -233,12 +233,12 @@ class DocumentService:
         """
         doc = await self.repo.get(document_id)
         if doc is None:
-            raise HTTPException(status_code=404, detail="Document not found")
+            raise HTTPException(status_code=404, detail="Documento no encontrado")
 
         # Org boundary check via project
         project = await self.project_repo.get_with_org_check(doc.project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Document not found")
+            raise HTTPException(status_code=404, detail="Documento no encontrado")
 
         return DocumentResponse.model_validate(doc)
 
@@ -249,11 +249,11 @@ class DocumentService:
         """
         doc = await self.repo.get(document_id)
         if doc is None:
-            raise HTTPException(status_code=404, detail="Document not found")
+            raise HTTPException(status_code=404, detail="Documento no encontrado")
 
         project = await self.project_repo.get_with_org_check(doc.project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Document not found")
+            raise HTTPException(status_code=404, detail="Documento no encontrado")
 
         # Best-effort S3 cleanup
         s3_paths = [p for p in [doc.file_path, doc.text_path] if p]
@@ -274,11 +274,11 @@ class DocumentService:
         """
         doc = await self.repo.get(document_id)
         if doc is None:
-            raise HTTPException(status_code=404, detail="Document not found")
+            raise HTTPException(status_code=404, detail="Documento no encontrado")
 
         project = await self.project_repo.get_with_org_check(doc.project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Document not found")
+            raise HTTPException(status_code=404, detail="Documento no encontrado")
 
         doc.processing_status = "pending"
         await self.db.flush()
@@ -297,7 +297,7 @@ class DocumentService:
         """
         project = await self.project_repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
         return project
 
     @staticmethod
@@ -310,7 +310,7 @@ class DocumentService:
         if ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported file extension '{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+                detail=f"Extensión de archivo no soportada '{ext}'. Permitidas: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
             )
         return ext
 
@@ -318,7 +318,7 @@ class DocumentService:
     def _validate_pdf_magic(content: bytes) -> None:
         """Raise 400 if the bytes do not start with the PDF header."""
         if not content.startswith(PDF_MAGIC):
-            raise HTTPException(status_code=400, detail="Invalid PDF file: missing PDF header (%PDF)")
+            raise HTTPException(status_code=400, detail="Archivo PDF inválido: falta el encabezado PDF (%PDF)")
 
     @staticmethod
     def _empty_extraction() -> PDFExtractionResult:

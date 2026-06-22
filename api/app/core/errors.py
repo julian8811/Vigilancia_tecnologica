@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 class AppError(Exception):
     """Base application error with an HTTP status code and message."""
 
-    def __init__(self, status_code: int = 500, detail: str = "Internal server error") -> None:
+    def __init__(self, status_code: int = 500, detail: str = "Error interno del servidor") -> None:
         self.status_code = status_code
         self.detail = detail
         super().__init__(detail)
@@ -34,5 +34,5 @@ def register_error_handlers(app: FastAPI) -> None:
         logger.exception("unhandled_error", path=str(request.url))
         return JSONResponse(
             status_code=500,
-            content={"error": "Internal server error"},
+            content={"error": "Error interno del servidor"},
         )

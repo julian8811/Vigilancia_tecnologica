@@ -82,7 +82,7 @@ class ProjectService:
         """Return a project scoped to *org_id*, or 404."""
         project = await self.repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
         return ProjectResponse.model_validate(project)
 
     async def list_projects(
@@ -110,7 +110,7 @@ class ProjectService:
         """Update a project scoped to *org_id*."""
         project = await self.repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         data = schema.model_dump(exclude_unset=True)
         slug = data.pop("slug", None)
@@ -127,7 +127,7 @@ class ProjectService:
             await self.db.flush()
             await self.db.refresh(project)
         except IntegrityError:
-            raise HTTPException(status_code=409, detail="Slug is already taken in this organisation")
+            raise HTTPException(status_code=409, detail="El slug ya está en uso en esta organización")
 
         logger.info("project_updated", project_id=project.id, slug=project.slug)
         return ProjectResponse.model_validate(project)
@@ -136,7 +136,7 @@ class ProjectService:
         """Hard-delete a project (with org-boundary check)."""
         project = await self.repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         await self.db.delete(project)
         await self.db.flush()
@@ -146,14 +146,14 @@ class ProjectService:
         """Validate and apply a status transition."""
         project = await self.repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         from_status = project.status
         if not ProjectStatusMachine.can_transition(from_status, to_status):
             valid = ProjectStatusMachine.valid_next_steps(from_status)
             raise HTTPException(
                 status_code=422,
-                detail=f"Cannot transition from '{from_status}' to '{to_status}'. Valid transitions: {valid}",
+                detail=f"No se puede pasar de '{from_status}' a '{to_status}'. Transiciones válidas: {valid}",
             )
 
         # ── Side effects for `draft → collecting` ───────────────────────
@@ -161,7 +161,7 @@ class ProjectService:
             if project.search_strategy is None:
                 raise HTTPException(
                     status_code=422,
-                    detail="Cannot start collection without a SearchStrategy. Please configure one first.",
+                    detail="No se puede iniciar la recolección sin una Estrategia de Búsqueda. Configurala primero.",
                 )
 
             sources = project.search_strategy.sources_selected or ""
@@ -169,7 +169,7 @@ class ProjectService:
             if "openalex" not in sources_list:
                 raise HTTPException(
                     status_code=422,
-                    detail="Cannot start collection: source 'openalex' is not selected in the SearchStrategy.",
+                    detail="No se puede iniciar la recolección: la fuente 'openalex' no está seleccionada en la Estrategia de Búsqueda.",
                 )
 
             # Check for already-running collection
@@ -183,7 +183,7 @@ class ProjectService:
             if active is not None:
                 raise HTTPException(
                     status_code=409,
-                    detail="A collection run is already in progress for this project.",
+                    detail="Ya hay una recolección en curso para este proyecto.",
                 )
 
             # Create a CollectionRun record
@@ -221,7 +221,7 @@ class ProjectService:
         """Deep-copy a project (without documents, graphs, or reports)."""
         original = await self.repo.get_with_org_check(project_id, org_id)
         if original is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         new_title = self._append_copy_suffix(original.name)
         slug = await self._resolve_slug(
@@ -254,7 +254,7 @@ class ProjectService:
         """Resolve the slug from the schema, or generate from title."""
         if schema.slug:
             return await self._resolve_slug(schema.slug, org_id)
-        return await self._resolve_slug(self._slugify(schema.name or "untitled"), org_id)
+        return await self._resolve_slug(self._slugify(schema.name or "sin_titulo"), org_id)
 
     async def _resolve_slug(
         self, provided_slug: str, org_id: uuid.UUID, *, exclude: uuid.UUID | None = None, force_unique: bool = False,
@@ -296,16 +296,16 @@ class ProjectService:
 
     @staticmethod
     def _append_copy_suffix(title: str) -> str:
-        """Append ``(copy)`` — or ``(copy N)`` if it already ends with one."""
+        """Append ``(copia)`` — or ``(copia N)`` if it already ends with one."""
 
-        # Check if already ends with (copy N)
-        m = re.search(r"\s*\(copy\s+\d+\)\s*$", title)
+        # Check if already ends with (copia N)
+        m = re.search(r"\s*\(copia\s+\d+\)\s*$", title)
         if m:
             n = int(re.search(r"\d+", m.group()).group()) + 1
-            return re.sub(r"\s*\(copy\s+\d+\)\s*$", f" (copy {n})", title)
+            return re.sub(r"\s*\(copia\s+\d+\)\s*$", f" (copia {n})", title)
 
-        # Check if already ends with (copy)
-        if re.search(r"\s*\(copy\)\s*$", title):
-            return re.sub(r"\s*\(copy\)\s*$", " (copy 2)", title)
+        # Check if already ends with (copia)
+        if re.search(r"\s*\(copia\)\s*$", title):
+            return re.sub(r"\s*\(copia\)\s*$", " (copia 2)", title)
 
-        return f"{title} (copy)"
+        return f"{title} (copia)"

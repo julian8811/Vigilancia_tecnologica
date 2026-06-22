@@ -40,13 +40,13 @@ class AuthService:
         existing = await self.user_repo.get_by_email(request.email)
         if existing:
             logger.warning("registration_email_taken", email=request.email)
-            raise HTTPException(status_code=409, detail="Email already registered")
+            raise HTTPException(status_code=409, detail="Este correo ya está registrado")
 
         # 2. Create or resolve organisation
         if request.organization_slug:
             org = await self.org_repo.get_by_slug(request.organization_slug)
             if org is None:
-                raise HTTPException(status_code=400, detail=f"Organization '{request.organization_slug}' not found")
+                raise HTTPException(status_code=400, detail=f"Organización '{request.organization_slug}' no encontrada")
         else:
             base_slug = self.org_repo.slugify(request.name)
             slug = await self._ensure_unique_slug(base_slug)
@@ -91,15 +91,15 @@ class AuthService:
         user = await self.user_repo.get_by_email(request.email)
         if user is None:
             logger.info("login_failed", email=request.email, reason="unknown_email")
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+            raise HTTPException(status_code=401, detail="Correo o contraseña inválidos")
 
         if not user.is_active:
             logger.info("login_failed", email=request.email, reason="inactive")
-            raise HTTPException(status_code=401, detail="Account is deactivated")
+            raise HTTPException(status_code=401, detail="Cuenta desactivada")
 
         if not verify_password(request.password, user.password_hash):
             logger.info("login_failed", email=request.email, reason="wrong_password")
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+            raise HTTPException(status_code=401, detail="Correo o contraseña inválidos")
 
         token = create_access_token(subject=str(user.id))
         logger.info("login_success", user_id=user.id, email=user.email)
@@ -111,7 +111,7 @@ class AuthService:
         """Verify the current password and set a new one."""
         if not verify_password(request.old_password, user.password_hash):
             logger.warning("password_change_failed", user_id=user.id, reason="wrong_old_password")
-            raise HTTPException(status_code=400, detail="Current password is incorrect")
+            raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
 
         user.password_hash = hash_password(request.new_password)
         await self.db.flush()

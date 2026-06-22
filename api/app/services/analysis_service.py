@@ -54,14 +54,14 @@ class AnalysisService:
         """
         project = await self.project_repo.get(project_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         topic = request.topic or project.topic or project.name
 
         asyncio.create_task(run_analysis(self.db, str(project_id), topic))
 
         logger.info("analysis_dispatched", project_id=str(project_id))
-        return AnalysisRunResponse(message="Analysis started", status="running")
+        return AnalysisRunResponse(message="Análisis iniciado", status="running")
 
     async def list_technologies(
         self, project_id: uuid.UUID, page: int = 1, page_size: int = 50, category: str | None = None,

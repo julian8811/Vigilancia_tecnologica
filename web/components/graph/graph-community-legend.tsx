@@ -20,7 +20,7 @@ export function GraphCommunityLegend({
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        Communities
+        Comunidades
       </p>
       <div className="space-y-1.5">
         {communities.map((c) => {
@@ -38,8 +38,8 @@ export function GraphCommunityLegend({
                 className="h-3 w-3 rounded-sm shrink-0"
                 style={{ backgroundColor: color }}
               />
-              <span>Community {c}</span>
-              {!active && <span className="ml-auto text-xs">hidden</span>}
+              <span>Comunidad {c}</span>
+              {!active && <span className="ml-auto text-xs">oculta</span>}
             </button>
           );
         })}

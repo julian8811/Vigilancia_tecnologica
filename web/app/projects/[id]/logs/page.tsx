@@ -98,9 +98,9 @@ export default function LogsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Execution Logs</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Registros de ejecución</h2>
         <p className="text-muted-foreground">
-          {project?.name} — pipeline run history
+          {project?.name} — historial de ejecución
         </p>
       </div>
 
@@ -108,10 +108,10 @@ export default function LogsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
-            Run Timeline
+            Línea de tiempo
           </CardTitle>
           <CardDescription>
-            Collection and graph generation runs ordered by start date.
+            Ejecuciones de recolección y generación de grafos ordenadas por fecha.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -124,16 +124,16 @@ export default function LogsPage() {
           ) : events.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground">
               <Activity className="mx-auto mb-2 h-8 w-8" />
-              <p>No runs yet. Start collection to see events here.</p>
+              <p>No hay ejecuciones todavía. Iniciá la recolección para ver eventos.</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Stats</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Started</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Estadísticas</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Iniciado</TableHead>
                   <TableHead>Error</TableHead>
                 </TableRow>
               </TableHeader>

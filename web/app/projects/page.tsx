@@ -54,21 +54,21 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 const statusTabs: { label: string; value: ProjectStatus | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "Draft", value: "draft" },
-  { label: "Collecting", value: "collecting" },
-  { label: "Processing", value: "processing" },
-  { label: "Graph Ready", value: "graph_ready" },
-  { label: "Archived", value: "archived" },
+  { label: "Todos", value: "all" },
+  { label: "Borrador", value: "draft" },
+  { label: "Recolectando", value: "collecting" },
+  { label: "Procesando", value: "processing" },
+  { label: "Grafo listo", value: "graph_ready" },
+  { label: "Archivado", value: "archived" },
 ];
 
 const statusLabels: Record<string, string> = {
-  draft: "Draft",
-  collecting: "Collecting",
-  processing: "Processing",
-  graph_ready: "Graph Ready",
-  report_ready: "Report Ready",
-  archived: "Archived",
+  draft: "Borrador",
+  collecting: "Recolectando",
+  processing: "Procesando",
+  graph_ready: "Grafo listo",
+  report_ready: "Informe listo",
+  archived: "Archivado",
 };
 
 export default function ProjectsPage() {
@@ -102,28 +102,28 @@ export default function ProjectsPage() {
     if (!deleteId) return;
     try {
       await deleteProject.mutateAsync(deleteId);
-      toast.success("Project deleted");
+      toast.success("Proyecto eliminado");
       setDeleteId(null);
     } catch (err: any) {
-      toast.error(err?.detail || "Failed to delete project");
+      toast.error(err?.detail || "Error al eliminar proyecto");
     }
   };
 
   const handleDuplicate = async (id: string) => {
     try {
       await duplicateProject.mutateAsync(id);
-      toast.success("Project duplicated");
+      toast.success("Proyecto duplicado");
     } catch (err: any) {
-      toast.error(err?.detail || "Failed to duplicate project");
+      toast.error(err?.detail || "Error al duplicar proyecto");
     }
   };
 
   const handleArchive = async (id: string) => {
     try {
       await archiveProject.mutateAsync(id);
-      toast.success("Project archived");
+      toast.success("Proyecto archivado");
     } catch (err: any) {
-      toast.error(err?.detail || "Failed to archive project");
+      toast.error(err?.detail || "Error al archivar proyecto");
     }
   };
 
@@ -131,11 +131,11 @@ export default function ProjectsPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">Projects</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Proyectos</h2>
         <Button asChild>
           <Link href="/projects/create">
             <Plus className="mr-2 h-4 w-4" />
-            New Project
+            Nuevo proyecto
           </Link>
         </Button>
       </div>
@@ -160,7 +160,7 @@ export default function ProjectsPage() {
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search projects..."
+            placeholder="Buscar proyectos..."
             className="pl-8"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -181,17 +181,17 @@ export default function ProjectsPage() {
       {!isLoading && filtered.length === 0 && (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <p className="font-medium">No projects found</p>
+            <p className="font-medium">No se encontraron proyectos</p>
             <p className="text-sm text-muted-foreground">
               {search || statusFilter !== "all"
-                ? "Try adjusting your filters."
-                : "Create your first project to get started."}
+                ? "Probá ajustando los filtros."
+                : "Creá tu primer proyecto para empezar."}
             </p>
             {!search && statusFilter === "all" && (
               <Button asChild>
                 <Link href="/projects/create">
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Project
+                  Crear proyecto
                 </Link>
               </Button>
             )}
@@ -206,11 +206,11 @@ export default function ProjectsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Topic</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Updated</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Tema</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Actualizado</TableHead>
                   <TableHead className="w-[70px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -252,20 +252,20 @@ export default function ProjectsPage() {
                           <DropdownMenuItem asChild>
                             <Link href={`/projects/${project.id}`}>
                               <Eye className="mr-2 h-4 w-4" />
-                              View
+                              Ver
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDuplicate(project.id)}
                           >
                             <Copy className="mr-2 h-4 w-4" />
-                            Duplicate
+                            Duplicar
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleArchive(project.id)}
                           >
                             <Archive className="mr-2 h-4 w-4" />
-                            Archive
+                            Archivar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <AlertDialog>
@@ -278,7 +278,7 @@ export default function ProjectsPage() {
                                 }}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
+                                Eliminar
                               </DropdownMenuItem>
                             </AlertDialogTrigger>
                           </AlertDialog>
@@ -325,10 +325,10 @@ export default function ProjectsPage() {
             disabled={page <= 1}
           >
             <ChevronLeft className="h-4 w-4" />
-            Previous
+            Anterior
           </Button>
           <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
+            Página {page} de {totalPages}
           </span>
           <Button
             variant="outline"
@@ -336,7 +336,7 @@ export default function ProjectsPage() {
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
           >
-            Next
+            Siguiente
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -349,19 +349,18 @@ export default function ProjectsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The project and all its data will be
-              permanently deleted.
+              Esta acción no se puede deshacer. El proyecto y todos sus datos se eliminarán permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

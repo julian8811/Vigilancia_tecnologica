@@ -104,7 +104,7 @@ class ReportService:
         # 1. Get project
         project = await self.db.get(SurveillanceProject, project_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         report_title = title or f"Reporte de vigilancia — {project.name}"
 
@@ -112,7 +112,7 @@ class ReportService:
         if report_id:
             report = await self.repo.get(report_id)
             if report is None:
-                raise HTTPException(status_code=404, detail="Report not found")
+                raise HTTPException(status_code=404, detail="Informe no encontrado")
         else:
             report = Report(
                 project_id=project_id,
@@ -221,7 +221,7 @@ class ReportService:
     async def delete(self, report_id: uuid.UUID, project_id: uuid.UUID) -> None:
         report = await self.repo.get(report_id)
         if report is None or report.project_id != project_id:
-            raise HTTPException(status_code=404, detail="Report not found")
+            raise HTTPException(status_code=404, detail="Informe no encontrado")
         await self.repo.delete(report_id)
 
     # ── Renderers ──────────────────────────────────────────────

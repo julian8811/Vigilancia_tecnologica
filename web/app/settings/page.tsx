@@ -16,9 +16,9 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Configuración</h2>
         <p className="text-muted-foreground">
-          Manage your account settings.
+          Administrá tu cuenta.
         </p>
       </div>
 
@@ -26,25 +26,25 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <User className="h-5 w-5" />
-            Profile
+            Perfil
           </CardTitle>
           <CardDescription>
-            Your personal information.
+            Tu información personal.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
-            <p className="text-xs text-muted-foreground">Name</p>
+            <p className="text-xs text-muted-foreground">Nombre</p>
             <p className="text-sm font-medium">{user?.name || "-"}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Email</p>
+            <p className="text-xs text-muted-foreground">Correo electrónico</p>
             <p className="text-sm font-medium">{user?.email || "-"}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Role</p>
+            <p className="text-xs text-muted-foreground">Rol</p>
             <p className="text-sm font-medium capitalize">
-              {user?.is_superuser ? "Administrator" : "User"}
+              {user?.is_superuser ? "Administrador" : "Usuario"}
             </p>
           </div>
         </CardContent>

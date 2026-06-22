@@ -50,7 +50,7 @@ export function NodeDetailPanel({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b px-4 py-3">
-        <h3 className="text-sm font-semibold">Node Details</h3>
+        <h3 className="text-sm font-semibold">Detalles del nodo</h3>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
@@ -60,19 +60,19 @@ export function NodeDetailPanel({
         <div className="space-y-4">
           {/* Node label */}
           <div>
-            <p className="text-xs text-muted-foreground">Label</p>
+            <p className="text-xs text-muted-foreground">Etiqueta</p>
             <p className="text-sm font-medium">{node.label}</p>
           </div>
 
           {/* Node ID */}
           <div>
-            <p className="text-xs text-muted-foreground">Node ID</p>
+            <p className="text-xs text-muted-foreground">ID del nodo</p>
             <p className="text-sm font-mono">{node.node_id || node.id}</p>
           </div>
 
           {/* Type */}
           <div>
-            <p className="text-xs text-muted-foreground">Type</p>
+            <p className="text-xs text-muted-foreground">Tipo</p>
             <Badge
               className="mt-1"
               style={{
@@ -87,7 +87,7 @@ export function NodeDetailPanel({
           {/* Community */}
           {node.community !== undefined && node.community !== null && (
             <div>
-              <p className="text-xs text-muted-foreground">Community</p>
+              <p className="text-xs text-muted-foreground">Comunidad</p>
               <Badge
                 className="mt-1"
                 style={{
@@ -103,7 +103,7 @@ export function NodeDetailPanel({
           {/* Centrality */}
           {node.centrality !== undefined && node.centrality !== null && (
             <div>
-              <p className="text-xs text-muted-foreground">Centrality</p>
+              <p className="text-xs text-muted-foreground">Centralidad</p>
               <p className="text-sm font-medium">
                 {node.centrality.toFixed(4)}
               </p>
@@ -118,7 +118,7 @@ export function NodeDetailPanel({
             onClick={() => onZoomToNode(node.node_id || node.id)}
           >
             <Search className="mr-2 h-4 w-4" />
-            Zoom to node
+            Acercar al nodo
           </Button>
         </div>
 
@@ -126,7 +126,7 @@ export function NodeDetailPanel({
         {connectedNodes.length > 0 && (
           <div className="mt-6 space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Connected Nodes ({connectedNodes.length})
+              Nodos conectados ({connectedNodes.length})
             </p>
             <div className="space-y-1">
               {connectedNodes.slice(0, 20).map((cn) => (
@@ -147,7 +147,7 @@ export function NodeDetailPanel({
               ))}
               {connectedNodes.length > 20 && (
                 <p className="text-xs text-muted-foreground">
-                  +{connectedNodes.length - 20} more
+                  +{connectedNodes.length - 20} más
                 </p>
               )}
             </div>
@@ -158,7 +158,7 @@ export function NodeDetailPanel({
         {metadataEntries.length > 0 && (
           <div className="mt-6 space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Metadata
+              Metadatos
             </p>
             <div className="space-y-1">
               {metadataEntries.map(([key, value]) => (

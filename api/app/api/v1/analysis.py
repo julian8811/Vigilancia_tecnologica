@@ -31,7 +31,7 @@ from app.schemas.analysis import (
 from app.services.analysis_service import AnalysisService
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/projects/{project_id}", tags=["analysis"])
+router = APIRouter(prefix="/projects/{project_id}", tags=["análisis"])
 
 
 # ── Run Analysis Pipeline ────────────────────────────────────

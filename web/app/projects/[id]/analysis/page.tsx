@@ -53,7 +53,7 @@ export default function AnalysisPage() {
 
   const handleRunAnalysis = async () => {
     if (!topic && !project?.topic) {
-      toast.error("Enter a topic or use the project's topic");
+      toast.error("Ingresá un tema o usá el tema del proyecto");
       return;
     }
     try {
@@ -61,9 +61,9 @@ export default function AnalysisPage() {
         projectId,
         topic: topic || project?.topic || "",
       });
-      toast.success("Analysis started");
+      toast.success("Análisis iniciado");
     } catch (err: any) {
-      toast.error(err?.detail || "Analysis failed");
+      toast.error(err?.detail || "Error en el análisis");
     }
   };
 
@@ -87,16 +87,16 @@ export default function AnalysisPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5" />
-            AI Analysis
+            Análisis con IA
           </CardTitle>
           <CardDescription>
-            Run AI analysis to identify technologies, trends, actors, and opportunities.
+            Ejecutá el análisis con IA para identificar tecnologías, tendencias, actores y oportunidades.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-3">
             <Input
-              placeholder="Analysis topic (defaults to project topic)"
+              placeholder="Tema de análisis (por defecto el tema del proyecto)"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
             />
@@ -109,7 +109,7 @@ export default function AnalysisPage() {
               ) : (
                 <Play className="mr-2 h-4 w-4" />
               )}
-              Run Analysis
+              Ejecutar análisis
             </Button>
           </div>
         </CardContent>
@@ -120,7 +120,7 @@ export default function AnalysisPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Technologies</CardTitle>
+              <CardTitle className="text-sm font-medium">Tecnologías</CardTitle>
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -129,7 +129,7 @@ export default function AnalysisPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Trends</CardTitle>
+              <CardTitle className="text-sm font-medium">Tendencias</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -138,7 +138,7 @@ export default function AnalysisPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Actors</CardTitle>
+              <CardTitle className="text-sm font-medium">Actores</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -147,7 +147,7 @@ export default function AnalysisPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Opportunities</CardTitle>
+              <CardTitle className="text-sm font-medium">Oportunidades</CardTitle>
               <Lightbulb className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -162,20 +162,20 @@ export default function AnalysisPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Technologies
+            Tecnologías
           </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-32 w-full" />
           ) : !technologies?.items?.length ? (
-            <p className="text-sm text-muted-foreground">Run analysis to identify technologies.</p>
+            <p className="text-sm text-muted-foreground">Ejecutá el análisis para identificar tecnologías.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Categoría</TableHead>
                   <TableHead>TRL</TableHead>
                 </TableRow>
               </TableHeader>
@@ -198,21 +198,21 @@ export default function AnalysisPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            Trends
+            Tendencias
           </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-32 w-full" />
           ) : !trends?.items?.length ? (
-            <p className="text-sm text-muted-foreground">Run analysis to detect trends.</p>
+            <p className="text-sm text-muted-foreground">Ejecutá el análisis para detectar tendencias.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Trend</TableHead>
-                  <TableHead>Direction</TableHead>
-                  <TableHead>Description</TableHead>
+                  <TableHead>Tendencia</TableHead>
+                  <TableHead>Dirección</TableHead>
+                  <TableHead>Descripción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -221,7 +221,7 @@ export default function AnalysisPage() {
                     <TableCell className="font-medium">{t.name}</TableCell>
                     <TableCell>
                       <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${trendBadge(t.momentum)}`}>
-                        {t.momentum || "N/A"}
+                        {t.momentum || "N/D"}
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
@@ -240,21 +240,21 @@ export default function AnalysisPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Key Actors
+            Actores clave
           </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-32 w-full" />
           ) : !actors?.items?.length ? (
-            <p className="text-sm text-muted-foreground">Run analysis to identify actors.</p>
+            <p className="text-sm text-muted-foreground">Ejecutá el análisis para identificar actores.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Country</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>País</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -262,7 +262,7 @@ export default function AnalysisPage() {
                   <TableRow key={a.id}>
                     <TableCell className="font-medium">{a.name}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{a.actor_type || "N/A"}</Badge>
+                      <Badge variant="outline">{a.actor_type || "N/D"}</Badge>
                     </TableCell>
                     <TableCell>{a.country || "-"}</TableCell>
                   </TableRow>
@@ -278,21 +278,21 @@ export default function AnalysisPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lightbulb className="h-5 w-5" />
-            Opportunities
+            Oportunidades
           </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-32 w-full" />
           ) : !opportunities?.items?.length ? (
-            <p className="text-sm text-muted-foreground">Run analysis to detect opportunities.</p>
+            <p className="text-sm text-muted-foreground">Ejecutá el análisis para detectar oportunidades.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Priority</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Prioridad</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -300,7 +300,7 @@ export default function AnalysisPage() {
                   <TableRow key={o.id}>
                     <TableCell className="font-medium">{o.title}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{o.opportunity_type || "N/A"}</Badge>
+                      <Badge variant="secondary">{o.opportunity_type || "N/D"}</Badge>
                     </TableCell>
                     <TableCell>{o.priority || "-"}</TableCell>
                   </TableRow>

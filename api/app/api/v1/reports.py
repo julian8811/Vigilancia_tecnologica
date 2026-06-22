@@ -15,7 +15,7 @@ from app.schemas.report import ReportCreate, ReportListResponse, ReportResponse
 from app.services.report_service import ReportService
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/projects/{project_id}/reports", tags=["reports"])
+router = APIRouter(prefix="/projects/{project_id}/reports", tags=["informes"])
 
 
 @router.get("", response_model=ReportListResponse)
@@ -60,7 +60,7 @@ async def get_report(
     service = ReportService(db)
     report = await service.get(report_id, project_id)
     if report is None:
-        raise HTTPException(status_code=404, detail="Report not found")
+        raise HTTPException(status_code=404, detail="Informe no encontrado")
     return ReportResponse.model_validate(report)
 
 
@@ -87,7 +87,7 @@ async def delete_report(
 ) -> dict:
     service = ReportService(db)
     await service.delete(report_id, project_id)
-    return {"detail": "Report deleted"}
+    return {"detail": "Informe eliminado"}
 
 
 @router.get("/{report_id}/download/{format}")
@@ -102,7 +102,7 @@ async def download_report(
     service = ReportService(db)
     report = await service.get(report_id, project_id)
     if report is None:
-        raise HTTPException(status_code=404, detail="Report not found")
+        raise HTTPException(status_code=404, detail="Informe no encontrado")
 
     format_lower = format.lower()
     if format_lower == "html":
@@ -115,15 +115,15 @@ async def download_report(
         path_attr = "pdf_path"
         media_type = "application/pdf"
     else:
-        raise HTTPException(status_code=400, detail=f"Unsupported format: {format}")
+        raise HTTPException(status_code=400, detail=f"Formato no soportado: {format}")
 
     file_path = getattr(report, path_attr, None)
     if not file_path:
-        raise HTTPException(status_code=404, detail=f"No {format} file for this report")
+        raise HTTPException(status_code=404, detail=f"No hay archivo {format} para este informe")
 
     try:
         content = Path(file_path).read_bytes()
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"{format.upper()} file not found on disk")
+        raise HTTPException(status_code=404, detail=f"Archivo {format.upper()} no encontrado")
 
     return Response(content=content, media_type=media_type)

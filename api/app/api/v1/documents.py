@@ -23,7 +23,7 @@ from sqlalchemy import select
 from app.services.ai_service import classify_document_batch
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/projects/{project_id}/documents", tags=["documents"])
+router = APIRouter(prefix="/projects/{project_id}/documents", tags=["documentos"])
 
 
 def _get_service(db: AsyncSession) -> DocumentService:
@@ -37,8 +37,8 @@ async def list_documents(
     project_id: uuid.UUID,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    document_type: str | None = Query(None, description="Filter by document type (paper, patent, webpage, ...)"),
-    processing_status: str | None = Query(None, description="Filter by processing status (pending, extracting, extracted, failed)"),
+    document_type: str | None = Query(None, description="Filtrar por tipo"),
+    processing_status: str | None = Query(None, description="Filtrar por estado"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
@@ -113,7 +113,7 @@ async def delete_document(
     """Delete a document, its S3 files, and its chunks."""
     service = _get_service(db)
     await service.delete_document(document_id, current_user.organization_id)
-    return {"detail": "Document deleted"}
+    return {"detail": "Documento eliminado"}
 
 
 @router.post("/{document_id}/reprocess", response_model=DocumentResponse)

@@ -24,7 +24,7 @@ from app.schemas.graph import (
 from app.services.graph_service import GraphService
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/projects/{project_id}/graph", tags=["graph"])
+router = APIRouter(prefix="/projects/{project_id}/graph", tags=["grafo"])
 
 
 def _get_service(db: AsyncSession) -> GraphService:
@@ -78,10 +78,10 @@ async def list_nodes(
     run_id: uuid.UUID,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    node_type: str | None = Query(None, description="Filter by node type"),
-    search: str | None = Query(None, description="Free-text search against labels"),
-    min_centrality: float | None = Query(None, description="Minimum centrality score"),
-    community_id: int | None = Query(None, description="Filter by community"),
+    node_type: str | None = Query(None, description="Filtrar por tipo de nodo"),
+    search: str | None = Query(None, description="Búsqueda por texto en etiquetas"),
+    min_centrality: float | None = Query(None, description="Centralidad mínima"),
+    community_id: int | None = Query(None, description="Filtrar por comunidad"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
@@ -121,7 +121,7 @@ async def list_edges(
     run_id: uuid.UUID,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    edge_type: str | None = Query(None, description="Filter by edge type"),
+    edge_type: str | None = Query(None, description="Filtrar por tipo de arista"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
@@ -156,8 +156,8 @@ async def query_graph(
 @router.get("/paths")
 async def find_paths(
     project_id: uuid.UUID,
-    source: uuid.UUID = Query(..., description="Source node ID"),
-    target: uuid.UUID = Query(..., description="Target node ID"),
+    source: uuid.UUID = Query(..., description="ID del nodo origen"),
+    target: uuid.UUID = Query(..., description="ID del nodo destino"),
     max_depth: int = Query(5, ge=1, le=10),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -179,7 +179,7 @@ async def find_paths(
 @router.get("/download-json")
 async def download_graph_json(
     project_id: uuid.UUID,
-    run_id: uuid.UUID = Query(..., description="Graph run ID"),
+    run_id: uuid.UUID = Query(..., description="ID de ejecución del grafo"),
     _: User = Depends(verify_project_org),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
@@ -187,18 +187,18 @@ async def download_graph_json(
     service = _get_service(db)
     run = await service.get_run(run_id)
     if not run.graph_json_path:
-        raise HTTPException(status_code=404, detail="No graph JSON file for this run")
+        raise HTTPException(status_code=404, detail="No hay archivo JSON para esta ejecución")
     try:
         content = Path(run.graph_json_path).read_bytes()
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Graph JSON file not found on disk")
+        raise HTTPException(status_code=404, detail="Archivo JSON no encontrado")
     return Response(content=content, media_type="application/json")
 
 
 @router.get("/html")
 async def get_graph_html(
     project_id: uuid.UUID,
-    run_id: uuid.UUID = Query(..., description="Graph run ID"),
+    run_id: uuid.UUID = Query(..., description="ID de ejecución del grafo"),
     _: User = Depends(verify_project_org),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
@@ -206,9 +206,9 @@ async def get_graph_html(
     service = _get_service(db)
     run = await service.get_run(run_id)
     if not run.graph_html_path:
-        raise HTTPException(status_code=404, detail="No graph HTML file for this run")
+        raise HTTPException(status_code=404, detail="No hay archivo HTML para esta ejecución")
     try:
         content = Path(run.graph_html_path).read_bytes()
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Graph HTML file not found on disk")
+        raise HTTPException(status_code=404, detail="Archivo HTML no encontrado")
     return Response(content=content, media_type="text/html")

@@ -40,18 +40,18 @@ export default function CorpusPage() {
   const handleRebuild = async () => {
     try {
       await rebuildCorpus.mutateAsync(projectId);
-      toast.success("Corpus rebuild started");
+      toast.success("Reconstrucción del corpus iniciada");
     } catch (err: any) {
-      toast.error(err?.detail || "Failed to rebuild corpus");
+      toast.error(err?.detail || "Error al reconstruir corpus");
     }
   };
 
   const handleSeed = async () => {
     try {
       const result = await seedTestDocs.mutateAsync(projectId);
-      toast.success(`${result.count} test documents seeded`);
+      toast.success(`${result.count} documentos de prueba creados`);
     } catch (err: any) {
-      toast.error(err?.detail || "Failed to seed test docs");
+      toast.error(err?.detail || "Error al crear docs de prueba");
     }
   };
 
@@ -80,11 +80,11 @@ export default function CorpusPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
-            Corpus Summary
+            Resumen del corpus
           </CardTitle>
           <CardDescription>
-            The corpus is the processed text collection used to build the
-            knowledge graph.
+            El corpus es la colección de texto procesado usada para construir el
+            grafo de conocimiento.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -92,14 +92,14 @@ export default function CorpusPage() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">
-                  Total Documents
+                  Total de documentos
                 </p>
                 <p className="text-2xl font-bold">
                   {summary.total_documents}
                 </p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Status</p>
+                <p className="text-sm text-muted-foreground">Estado</p>
                 <Badge
                   variant={
                     summary.status === "ready"
@@ -114,14 +114,14 @@ export default function CorpusPage() {
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">
-                  Processed Files
+                  Archivos procesados
                 </p>
                 <p className="text-2xl font-bold">{summary.file_count}</p>
               </div>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No corpus data available.
+              No hay datos del corpus disponibles.
             </p>
           )}
         </CardContent>
@@ -133,13 +133,13 @@ export default function CorpusPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <RefreshCw className="h-4 w-4 animate-spin" />
-              Building Corpus
+              Construyendo corpus
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Progress value={progressValue} className="h-2" />
             <p className="mt-2 text-xs text-muted-foreground">
-              Processing documents...
+              Procesando documentos...
             </p>
           </CardContent>
         </Card>
@@ -151,10 +151,10 @@ export default function CorpusPage() {
           <CardContent className="flex items-center gap-3 py-4">
             <CheckCircle2 className="h-5 w-5 text-green-500" />
             <div>
-              <p className="text-sm font-medium">Corpus is ready</p>
+              <p className="text-sm font-medium">El corpus está listo</p>
               {summary.last_rebuilt && (
                 <p className="text-xs text-muted-foreground">
-                  Last rebuilt{" "}
+                  Última reconstrucción{" "}
                   {format(new Date(summary.last_rebuilt), "PPp", {
                     locale: es,
                   })}
@@ -176,7 +176,7 @@ export default function CorpusPage() {
           <RefreshCw
             className={`mr-2 h-4 w-4 ${rebuildCorpus.isPending ? "animate-spin" : ""}`}
           />
-          Rebuild Corpus
+          Reconstruir corpus
         </Button>
 
         <Button
@@ -185,7 +185,7 @@ export default function CorpusPage() {
           disabled={seedTestDocs.isPending}
         >
           <Beaker className="mr-2 h-4 w-4" />
-          Seed Test Documents
+          Crear documentos de prueba
         </Button>
       </div>
     </div>

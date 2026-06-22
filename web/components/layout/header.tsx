@@ -19,10 +19,10 @@ interface HeaderProps {
 }
 
 const routeTitles: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/projects": "Projects",
-  "/projects/create": "New Project",
-  "/settings": "Settings",
+  "/dashboard": "Panel",
+  "/projects": "Proyectos",
+  "/projects/create": "Nuevo proyecto",
+  "/settings": "Configuración",
 };
 
 export function Header({ onMenuClick }: HeaderProps) {
@@ -35,11 +35,11 @@ export function Header({ onMenuClick }: HeaderProps) {
     // Try to match dynamic routes
     if (pathname.startsWith("/projects/")) {
       const segments = pathname.split("/");
-      if (segments.length === 3) title = "Project";
-      else if (segments[3] === "documents") title = "Documents";
+      if (segments.length === 3) title = "Proyecto";
+      else if (segments[3] === "documents") title = "Documentos";
       else if (segments[3] === "corpus") title = "Corpus";
-      else if (segments[3] === "graph") title = "Graph";
-      else title = "Project";
+      else if (segments[3] === "graph") title = "Grafo";
+      else title = "Proyecto";
     }
   }
 
@@ -79,7 +79,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col">
-                <span>{user?.name || "User"}</span>
+                <span>{user?.name || "Usuario"}</span>
                 <span className="text-xs font-normal text-muted-foreground">
                   {user?.email}
                 </span>
@@ -88,7 +88,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout} className="text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
-              Sign out
+              Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

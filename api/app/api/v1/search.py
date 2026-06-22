@@ -15,7 +15,7 @@ from app.core.config import settings
 from app.models.user import User
 
 logger = get_logger(__name__)
-router = APIRouter(tags=["search"])
+router = APIRouter(tags=["búsqueda"])
 
 
 class SearchPreviewRequest(BaseModel):
@@ -114,7 +114,7 @@ async def search_preview(
 
     except Exception as exc:
         logger.error("search_preview_failed", source=request.source, error=str(exc))
-        raise HTTPException(status_code=502, detail=f"Search failed: {exc}")
+        raise HTTPException(status_code=502, detail=f"Búsqueda fallida: {exc}")
 
     logger.info("search_preview_completed", source=request.source, total=len(results))
     return SearchPreviewResponse(results=results, total=len(results))
@@ -134,7 +134,7 @@ async def collect_from_search(
 
     inserted = 0
     for item in request.results:
-        title = item.get("title", "Untitled")
+        title = item.get("title", "Sin título")
         doi = item.get("doi")
         abstract = item.get("abstract") or item.get("abstract", "")
         authors = item.get("authors", [])
@@ -165,4 +165,4 @@ async def collect_from_search(
 
     await db.commit()
     logger.info("collect_from_search_completed", project_id=str(project_id), inserted=inserted)
-    return {"message": f"Imported {inserted} documents", "inserted": inserted}
+    return {"message": f"{inserted} documentos importados", "inserted": inserted}

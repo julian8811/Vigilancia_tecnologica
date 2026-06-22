@@ -54,9 +54,9 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 const statusLabels: Record<string, string> = {
-  pending: "Pending",
-  processing: "Processing",
-  ready: "Ready",
+  pending: "Pendiente",
+  processing: "Procesando",
+  ready: "Listo",
   error: "Error",
 };
 
@@ -68,7 +68,7 @@ const statusVariants: Record<string, any> = {
 };
 
 const sourceLabels: Record<string, string> = {
-  manual_upload: "Uploaded",
+  manual_upload: "Subido",
   openalex: "OpenAlex",
 };
 
@@ -109,9 +109,9 @@ export default function DocumentsPage() {
     if (!file) return;
     try {
       await uploadDocument.mutateAsync({ projectId, file });
-      toast.success("Document uploaded");
+      toast.success("Documento subido");
     } catch (err: any) {
-      toast.error(err?.message || "Upload failed");
+      toast.error(err?.message || "Error al subir");
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -121,10 +121,10 @@ export default function DocumentsPage() {
     if (!url.trim()) return;
     try {
       await addUrlDocument.mutateAsync({ project_id: projectId, url: url.trim() });
-      toast.success("URL added");
+      toast.success("URL agregada");
       setUrl("");
     } catch (err: any) {
-      toast.error(err?.detail || "Failed to add URL");
+      toast.error(err?.detail || "Error al agregar URL");
     }
   };
 
@@ -133,10 +133,10 @@ export default function DocumentsPage() {
     if (!deleteId) return;
     try {
       await deleteDocument.mutateAsync({ projectId, docId: deleteId });
-      toast.success("Document deleted");
+      toast.success("Documento eliminado");
       setDeleteId(null);
     } catch (err: any) {
-      toast.error(err?.detail || "Failed to delete document");
+      toast.error(err?.detail || "Error al eliminar");
     }
   };
 
@@ -144,9 +144,9 @@ export default function DocumentsPage() {
   const handleReprocess = async (id: string) => {
     try {
       await reprocessDocument.mutateAsync({ projectId, docId: id });
-      toast.success("Document queued for reprocessing");
+      toast.success("Documento en cola para reprocesar");
     } catch (err: any) {
-      toast.error(err?.detail || "Failed to reprocess document");
+      toast.error(err?.detail || "Error al reprocesar");
     }
   };
 
@@ -158,10 +158,10 @@ export default function DocumentsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Upload className="h-4 w-4" />
-              Upload File
+              Subir archivo
             </CardTitle>
             <CardDescription>
-              Upload a patent PDF, scientific paper, or document.
+              Subí un PDF de patente, artículo científico o documento.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -181,10 +181,10 @@ export default function DocumentsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Link className="h-4 w-4" />
-              Add URL
+              Agregar URL
             </CardTitle>
             <CardDescription>
-              Add a news article, blog post, or online resource.
+              Agregá una noticia, artículo de blog o recurso en línea.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -203,7 +203,7 @@ export default function DocumentsPage() {
                 {addUrlDocument.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  "Add"
+                  "Agregar"
                 )}
               </Button>
             </div>
@@ -214,9 +214,9 @@ export default function DocumentsPage() {
       {/* Documents table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Documents</CardTitle>
+          <CardTitle className="text-lg">Documentos</CardTitle>
           <CardDescription>
-            {data?.total ?? 0} document{(data?.total ?? 0) !== 1 ? "s" : ""} total
+            {data?.total ?? 0} documento{(data?.total ?? 0) !== 1 ? "s" : ""} en total
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -228,17 +228,17 @@ export default function DocumentsPage() {
             </div>
           ) : documents.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              No documents yet. Upload a file or add a URL to get started.
+              No hay documentos todavía. Subí un archivo o agregá una URL para empezar.
             </div>
           ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Source</TableHead>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Fuente</TableHead>
                     <TableHead>Uploaded</TableHead>
                     <TableHead className="w-[120px]"></TableHead>
                   </TableRow>
@@ -281,7 +281,7 @@ export default function DocumentsPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleReprocess(doc.id)}
-                            title="Reprocess"
+                            title="Reprocesar"
                             disabled={reprocessDocument.isPending}
                           >
                             <RefreshCw className="h-4 w-4" />
@@ -317,10 +317,10 @@ export default function DocumentsPage() {
                 disabled={page <= 1}
               >
                 <ChevronLeft className="h-4 w-4" />
-                Previous
+                Anterior
               </Button>
               <span className="text-sm text-muted-foreground">
-                Page {page} of {totalPages}
+                Página {page} de {totalPages}
               </span>
               <Button
                 variant="outline"
@@ -328,7 +328,7 @@ export default function DocumentsPage() {
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
               >
-                Next
+                Siguiente
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -343,14 +343,14 @@ export default function DocumentsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete document?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar documento?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The document will be permanently
-              removed.
+              Esta acción no se puede deshacer. El documento se eliminará
+              permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

@@ -26,12 +26,12 @@ import {
 import type { Project } from "@/types/api";
 
 const statusLabels: Record<string, string> = {
-  draft: "Draft",
-  collecting: "Collecting",
-  processing: "Processing",
-  graph_ready: "Graph Ready",
-  report_ready: "Report Ready",
-  archived: "Archived",
+  draft: "Borrador",
+  collecting: "Recolectando",
+  processing: "Procesando",
+  graph_ready: "Grafo listo",
+  report_ready: "Informe listo",
+  archived: "Archivado",
 };
 
 export default function DashboardPage() {
@@ -63,13 +63,13 @@ export default function DashboardPage() {
             Welcome back{user?.name ? `, ${user.name}` : ""}!
           </h2>
           <p className="text-muted-foreground">
-            Here&apos;s an overview of your surveillance projects.
+            Este es el resumen de tus proyectos de vigilancia.
           </p>
         </div>
         <Button asChild>
           <Link href="/projects/create">
             <Plus className="mr-2 h-4 w-4" />
-            New Project
+            Nuevo proyecto
           </Link>
         </Button>
       </div>
@@ -79,7 +79,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Projects
+              Total de proyectos
             </CardTitle>
             <FolderKanban className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -94,7 +94,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              In Progress
+              En progreso
             </CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -109,7 +109,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Graph Ready
+              Grafo listo
             </CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -123,7 +123,7 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Archived</CardTitle>
+            <CardTitle className="text-sm font-medium">Archivado</CardTitle>
             <Archive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -140,13 +140,13 @@ export default function DashboardPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Recent Projects</CardTitle>
+            <CardTitle>Proyectos recientes</CardTitle>
             <CardDescription>
-              Your most recently updated projects.
+              Tus proyectos actualizados recientemente.
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/projects">View all</Link>
+            <Link href="/projects">Ver todos</Link>
           </Button>
         </CardHeader>
         <CardContent>
@@ -160,15 +160,15 @@ export default function DashboardPage() {
             <div className="flex flex-col items-center gap-3 py-8 text-center">
               <FolderKanban className="h-12 w-12 text-muted-foreground/50" />
               <div>
-                <p className="font-medium">No projects yet</p>
+                <p className="font-medium">No hay proyectos todavía</p>
                 <p className="text-sm text-muted-foreground">
-                  Create your first surveillance project to get started.
+                  Creá tu primer proyecto de vigilancia para empezar.
                 </p>
               </div>
               <Button asChild>
                 <Link href="/projects/create">
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Project
+                  Crear proyecto
                 </Link>
               </Button>
             </div>

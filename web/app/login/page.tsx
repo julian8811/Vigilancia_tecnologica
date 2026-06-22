@@ -22,8 +22,8 @@ import {
 import { BarChart3, Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email("Ingresá un correo válido"),
+  password: z.string().min(1, "La contraseña es obligatoria"),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -45,10 +45,10 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await login(data.email, data.password);
-      toast.success("Welcome back!");
+      toast.success("¡Bienvenido de nuevo!");
       router.push("/dashboard");
     } catch (err: any) {
-      toast.error(err?.detail || err?.message || "Login failed");
+      toast.error(err?.detail || err?.message || "Error al iniciar sesión");
     } finally {
       setSubmitting(false);
     }
@@ -61,19 +61,19 @@ export default function LoginPage() {
           <div className="mb-2 flex justify-center">
             <BarChart3 className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Sign in</CardTitle>
+          <CardTitle className="text-2xl">Iniciar sesión</CardTitle>
           <CardDescription>
-            Enter your credentials to access VigilaGraph
+            Ingresá tus credenciales para acceder a VigilaGraph
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Correo electrónico</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder="correo@ejemplo.com"
                 {...register("email")}
               />
               {errors.email && (
@@ -83,7 +83,7 @@ export default function LoginPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
@@ -100,15 +100,15 @@ export default function LoginPage() {
           <CardFooter className="flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sign in
+              Ingresar
             </Button>
             <p className="text-center text-xs text-muted-foreground">
-              Don&apos;t have an account?{" "}
+              ¿No tenés cuenta?{" "}
               <Link
                 href="/register"
                 className="font-medium text-primary hover:underline"
               >
-                Register
+                Registrate
               </Link>
             </p>
           </CardFooter>

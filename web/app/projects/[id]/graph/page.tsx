@@ -35,10 +35,10 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 const runStatusLabels: Record<string, string> = {
-  queued: "Queued",
-  running: "Running",
-  completed: "Completed",
-  failed: "Failed",
+  queued: "En cola",
+  running: "Ejecutando",
+  completed: "Completado",
+  failed: "Fallido",
 };
 
 const runStatusVariants: Record<string, any> = {
@@ -59,9 +59,9 @@ export default function GraphPage() {
   const handleGenerate = async () => {
     try {
       await generateGraph.mutateAsync(projectId);
-      toast.success("Graph generation started");
+      toast.success("Generación de grafo iniciada");
     } catch (err: any) {
-      toast.error(err?.detail || "Failed to generate graph");
+      toast.error(err?.detail || "Error al generar grafo");
     }
   };
 
@@ -76,11 +76,11 @@ export default function GraphPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Share2 className="h-5 w-5" />
-            Knowledge Graph
+            Grafo de conocimiento
           </CardTitle>
           <CardDescription>
-            Generate and explore the knowledge graph extracted from your
-            document corpus.
+            Generá y explorá el grafo de conocimiento extraído de tu
+            corpus de documentos.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -102,8 +102,8 @@ export default function GraphPage() {
                   <div>
                     <p className="text-sm font-medium">
                       {latestRun
-                        ? `Status: ${runStatusLabels[latestRun.status] || latestRun.status}`
-                        : "No graph generated yet"}
+                        ? `Estado: ${runStatusLabels[latestRun.status] || latestRun.status}`
+                        : "No se ha generado un grafo todavía"}
                     </p>
                     {latestRun?.error_message && (
                       <p className="text-xs text-destructive">
@@ -130,7 +130,7 @@ export default function GraphPage() {
                     ) : (
                       <Play className="mr-2 h-4 w-4" />
                     )}
-                    {isRunning ? "Generating..." : "Generate Graph"}
+                    {isRunning ? "Generando..." : "Generar grafo"}
                   </Button>
                   {hasGraph && (
                     <Button variant="outline" asChild>
@@ -138,7 +138,7 @@ export default function GraphPage() {
                         href={`/projects/${projectId}/graph/visualize`}
                       >
                         <Eye className="mr-2 h-4 w-4" />
-                        Open Visualization
+                        Abrir visualización
                       </Link>
                     </Button>
                   )}
@@ -152,9 +152,9 @@ export default function GraphPage() {
       {/* Runs history */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Run History</CardTitle>
+          <CardTitle className="text-lg">Historial de ejecuciones</CardTitle>
           <CardDescription>
-            Previous graph generation runs.
+            Ejecuciones anteriores de generación de grafo.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -166,16 +166,16 @@ export default function GraphPage() {
             </div>
           ) : !runs || runs.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              No runs yet. Click &quot;Generate Graph&quot; to start.
+              No hay ejecuciones todavía. Hacé clic en &quot;Generar grafo&quot; para empezar.
             </div>
           ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Started</TableHead>
-                    <TableHead>Completed</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Iniciado</TableHead>
+                    <TableHead>Completado</TableHead>
                     <TableHead>Error</TableHead>
                   </TableRow>
                 </TableHeader>

@@ -57,7 +57,7 @@ class GraphService:
         """Trigger graph generation for a project (synchronous subprocess)."""
         project = await self.project_repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         # 1. Get documents directly from DB
         from app.models.document import Document
@@ -68,7 +68,7 @@ class GraphService:
         docs = docs_result.scalars().all()
 
         if not docs:
-            raise HTTPException(status_code=400, detail="No documents available")
+            raise HTTPException(status_code=400, detail="No hay documentos disponibles")
 
         # 2. Create flat corpus directory with .md files
         flat_corpus = Path(settings.STORAGE_LOCAL_PATH) / "flat_corpus" / str(project_id)
@@ -80,7 +80,7 @@ class GraphService:
             if not doc.abstract:
                 continue
             fname = flat_corpus / f"{doc.id}.md"
-            content = f"# {doc.title or 'Untitled'}\n\n"
+            content = f"# {doc.title or 'Sin título'}\n\n"
             if doc.authors:
                 try:
                     authors = json.loads(doc.authors) if isinstance(doc.authors, str) else doc.authors
@@ -94,7 +94,7 @@ class GraphService:
 
         doc_count = len(list(flat_corpus.glob("*.md")))
         if doc_count == 0:
-            raise HTTPException(status_code=400, detail="No documents with abstracts available")
+            raise HTTPException(status_code=400, detail="No hay documentos con resúmenes disponibles")
 
         # 3. Create GraphRun record
         run = GraphRun(
@@ -141,12 +141,12 @@ class GraphService:
                 proc.kill()
                 await proc.wait()
                 run.status = "failed"
-                run.error_message = "Graphify subprocess timed out after 3600 seconds"
+                run.error_message = "El subproceso de Graphify excedió el tiempo límite de 3600 segundos"
                 run.finished_at = datetime.now(UTC)
                 await self.db.flush()
                 logger.error("graphify_timeout", run_id=run_id)
                 return GraphGenerateResponse(
-                    message="Graph generation timed out",
+                    message="La generación del grafo excedió el tiempo límite",
                     run_id=run_id,
                     status="failed",
                 )
@@ -154,12 +154,12 @@ class GraphService:
             if proc.returncode != 0:
                 error_msg = stderr.decode("utf-8", errors="replace") if stderr else "Unknown error"
                 run.status = "failed"
-                run.error_message = f"Graphify exited with code {proc.returncode}: {error_msg[:2000]}"
+                run.error_message = f"Graphify terminó con código {proc.returncode}: {error_msg[:2000]}"
                 run.finished_at = datetime.now(UTC)
                 await self.db.flush()
                 logger.error("graphify_failed", run_id=run_id, returncode=proc.returncode)
                 return GraphGenerateResponse(
-                    message="Graph generation failed",
+                    message="Falló la generación del grafo",
                     run_id=run_id,
                     status="failed",
                 )
@@ -168,11 +168,11 @@ class GraphService:
             graph_json_path = graphify_out / "graph.json"
             if not graph_json_path.exists():
                 run.status = "failed"
-                run.error_message = "Graphify completed but graph.json not found in output"
+                run.error_message = "Graphify finalizó pero no se encontró graph.json en la salida"
                 run.finished_at = datetime.now(UTC)
                 await self.db.flush()
                 return GraphGenerateResponse(
-                    message="Graph generation failed: output not found",
+                    message="Falló la generación del grafo: no se encontró la salida",
                     run_id=run_id,
                     status="failed",
                 )
@@ -223,7 +223,7 @@ class GraphService:
             )
 
             return GraphGenerateResponse(
-                message="Graph generated successfully",
+                message="Grafo generado exitosamente",
                 run_id=run_id,
                 status="completed",
             )
@@ -235,7 +235,7 @@ class GraphService:
             await self.db.flush()
             logger.exception("graphify_exception", run_id=run_id)
             return GraphGenerateResponse(
-                message=f"Graph generation failed: {exc}",
+                message=f"Falló la generación del grafo: {exc}",
                 run_id=run_id,
                 status="failed",
             )
@@ -244,7 +244,7 @@ class GraphService:
         """Return the most recent completed graph run for a project."""
         project = await self.project_repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         run = await self.run_repo.get_latest_by_project(project_id)
         if run is None:
@@ -262,7 +262,7 @@ class GraphService:
         """Paginated list of graph runs for a project."""
         project = await self.project_repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         items, total = await self.run_repo.list_by_project(project_id, page=page, page_size=page_size)
         total_pages = max(1, (total + page_size - 1) // page_size)
@@ -459,17 +459,17 @@ class GraphService:
         """Fetch a graph run by ID (no org check — caller must verify)."""
         run = await self.run_repo.get(run_id)
         if run is None:
-            raise HTTPException(status_code=404, detail="Graph run not found")
+            raise HTTPException(status_code=404, detail="Ejecución de grafo no encontrada")
         return run
 
     async def _get_run_with_org_check(self, run_id: uuid.UUID, org_id: uuid.UUID) -> GraphRun:
         """Verify a graph run belongs to the user's org via its project."""
         run = await self.run_repo.get(run_id)
         if run is None:
-            raise HTTPException(status_code=404, detail="Graph run not found")
+            raise HTTPException(status_code=404, detail="Ejecución de grafo no encontrada")
 
         project = await self.project_repo.get_with_org_check(run.project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Graph run not found")
+            raise HTTPException(status_code=404, detail="Ejecución de grafo no encontrada")
 
         return run

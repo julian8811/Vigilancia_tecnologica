@@ -46,12 +46,12 @@ export function GraphFilters({
       {/* Search */}
       <div className="space-y-2">
         <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Search
+          Buscar
         </Label>
         <div className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Filter by label..."
+            placeholder="Filtrar por etiqueta..."
             className="pl-8 h-9 text-sm"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -63,7 +63,7 @@ export function GraphFilters({
       {nodeTypes.length > 0 && (
         <div className="space-y-2">
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Node Type
+            Tipo de nodo
           </Label>
           <div className="space-y-1">
             {nodeTypes.map((type) => (
@@ -91,7 +91,7 @@ export function GraphFilters({
       {communities.length > 0 && (
         <div className="space-y-2">
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Communities
+            Comunidades
           </Label>
           <div className="space-y-1">
             {communities.map((c) => (
@@ -108,7 +108,7 @@ export function GraphFilters({
                   }
                   onChange={() => toggleCommunity(c)}
                 />
-                <span>Community {c}</span>
+                <span>Comunidad {c}</span>
               </label>
             ))}
           </div>

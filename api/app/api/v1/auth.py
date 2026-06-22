@@ -13,7 +13,7 @@ from app.schemas.user import UserResponse
 from app.services.auth_service import AuthService
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["autenticación"])
 
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
@@ -45,4 +45,4 @@ async def change_password(
     """Change the current user's password."""
     service = AuthService(db)
     await service.change_password(current_user, request)
-    return {"detail": "Password updated successfully"}
+    return {"detail": "Contraseña actualizada exitosamente"}

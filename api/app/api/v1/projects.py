@@ -24,7 +24,7 @@ class StatusTransitionRequest(BaseModel):
     status: str
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/projects", tags=["projects"])
+router = APIRouter(prefix="/projects", tags=["proyectos"])
 
 
 def _build_list_response(items: list[ProjectResponse], total: int, page: int, page_size: int) -> ProjectListResponse:
@@ -36,13 +36,13 @@ def _build_list_response(items: list[ProjectResponse], total: int, page: int, pa
 async def list_projects(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    status: str | None = Query(None, description="Filter by project status"),
+    status: str | None = Query(None, description="Filtrar por estado"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectListResponse:
     """List projects for the current user's organisation."""
     if current_user.organization_id is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     service = ProjectService(db)
     return await service.list_projects(
         current_user.organization_id, page=page, page_size=page_size, status=status,
@@ -57,7 +57,7 @@ async def create_project(
 ) -> ProjectResponse:
     """Create a new surveillance project."""
     if current_user.organization_id is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     service = ProjectService(db)
     return await service.create_project(data, current_user.organization_id, current_user.id)
 
@@ -97,7 +97,7 @@ async def delete_project(
     """Hard-delete a project (org-bound)."""
     service = ProjectService(db)
     await service.delete_project(project_id, current_user.organization_id)
-    return {"detail": "Project deleted"}
+    return {"detail": "Proyecto eliminado"}
 
 
 @router.post("/{project_id}/duplicate", response_model=ProjectResponse)

@@ -83,7 +83,7 @@ export default function GraphVisualizePage() {
       <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Loading graph data...</p>
+          <p className="text-sm text-muted-foreground">Cargando datos del grafo...</p>
         </div>
       </div>
     );
@@ -94,14 +94,14 @@ export default function GraphVisualizePage() {
       <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-center">
           <AlertTriangle className="h-8 w-8 text-destructive" />
-          <p className="font-medium">Failed to load graph</p>
+          <p className="font-medium">Error al cargar el grafo</p>
           <p className="text-sm text-muted-foreground">
             {dataError.message}
           </p>
           <Button variant="outline" asChild>
             <Link href={`/projects/${projectId}/graph`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Graph
+              Volver al grafo
             </Link>
           </Button>
         </div>
@@ -113,14 +113,14 @@ export default function GraphVisualizePage() {
     return (
       <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-center">
-          <p className="font-medium">No graph data available</p>
+          <p className="font-medium">No hay datos del grafo disponibles</p>
           <p className="text-sm text-muted-foreground">
-            Generate a graph first from the Graph tab.
+            Generá un grafo primero desde la pestaña Grafo.
           </p>
           <Button variant="outline" asChild>
             <Link href={`/projects/${projectId}/graph`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Graph
+              Volver al grafo
             </Link>
           </Button>
         </div>
@@ -136,20 +136,20 @@ export default function GraphVisualizePage() {
           <Button variant="ghost" size="sm" asChild>
             <Link href={`/projects/${projectId}/graph`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
+              Volver
             </Link>
           </Button>
         </div>
         <div className="space-y-6">
           <div>
             <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Nodes
+              Nodos
             </p>
             <p className="text-lg font-bold">{allNodes.length}</p>
           </div>
           <div>
             <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Edges
+              Aristas
             </p>
             <p className="text-lg font-bold">{allEdges.length}</p>
           </div>

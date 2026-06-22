@@ -22,7 +22,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 credentials_exception = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Could not validate credentials",
+    detail="No se pudieron validar las credenciales",
     headers={"WWW-Authenticate": "Bearer"},
 )
 
@@ -82,7 +82,7 @@ async def get_current_active_user(
     Raises ``400 BAD REQUEST`` when the account is deactivated.
     """
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=400, detail="Usuario inactivo")
     return current_user
 
 
@@ -97,11 +97,11 @@ async def verify_project_org(
     Always raises 404 (not 403) to avoid leaking project existence.
     """
     if current_user.organization_id is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     repo = ProjectRepository(db)
     project = await repo.get_with_org_check(project_id, current_user.organization_id)
     if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     return current_user
 
 
@@ -122,7 +122,7 @@ def require_roles(*roles: str):
         if user_role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Requires one of {roles}",
+                detail=f"Requiere uno de estos roles: {roles}",
             )
         return current_user
 

@@ -23,17 +23,17 @@ import { BarChart3, Loader2 } from "lucide-react";
 
 const registerSchema = z
   .object({
-    name: z.string().min(1, "Name is required").max(100),
-    email: z.string().email("Enter a valid email"),
+    name: z.string().min(1, "El nombre es obligatorio").max(100),
+    email: z.string().email("Ingresá un correo válido"),
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters")
+      .min(8, "La contraseña debe tener al menos 8 caracteres")
       .max(128),
     confirmPassword: z.string(),
     organization: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
+    message: "Las contraseñas no coinciden",
     path: ["confirmPassword"],
   });
 
@@ -61,10 +61,10 @@ export default function RegisterPage() {
         name: data.name,
         organization_name: data.organization || undefined,
       });
-      toast.success("Account created! Please sign in.");
+      toast.success("¡Cuenta creada! Iniciá sesión.");
       router.push("/login");
     } catch (err: any) {
-      toast.error(err?.detail || err?.message || "Registration failed");
+      toast.error(err?.detail || err?.message || "Error al registrarse");
     } finally {
       setSubmitting(false);
     }
@@ -77,18 +77,18 @@ export default function RegisterPage() {
           <div className="mb-2 flex justify-center">
             <BarChart3 className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Create an account</CardTitle>
+          <CardTitle className="text-2xl">Crear cuenta</CardTitle>
           <CardDescription>
-            Enter your details to get started with VigilaGraph
+            Ingresá tus datos para empezar con VigilaGraph
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">Nombre</Label>
               <Input
                 id="name"
-                placeholder="Your name"
+                placeholder="Tu nombre"
                 {...register("name")}
               />
               {errors.name && (
@@ -98,11 +98,11 @@ export default function RegisterPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Correo electrónico</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder="correo@ejemplo.com"
                 {...register("email")}
               />
               {errors.email && (
@@ -112,11 +112,11 @@ export default function RegisterPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="At least 8 characters"
+                placeholder="Al menos 8 caracteres"
                 {...register("password")}
               />
               {errors.password && (
@@ -126,11 +126,11 @@ export default function RegisterPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="Repeat your password"
+                placeholder="Repetí tu contraseña"
                 {...register("confirmPassword")}
               />
               {errors.confirmPassword && (
@@ -140,10 +140,10 @@ export default function RegisterPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="organization">Organization (optional)</Label>
+              <Label htmlFor="organization">Organización (opcional)</Label>
               <Input
                 id="organization"
-                placeholder="Your company or institution"
+                placeholder="Tu empresa o institución"
                 {...register("organization")}
               />
             </div>
@@ -151,15 +151,15 @@ export default function RegisterPage() {
           <CardFooter className="flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create account
+              Crear cuenta
             </Button>
             <p className="text-center text-xs text-muted-foreground">
-              Already have an account?{" "}
+              ¿Ya tenés cuenta?{" "}
               <Link
                 href="/login"
                 className="font-medium text-primary hover:underline"
               >
-                Sign in
+                Iniciar sesión
               </Link>
             </p>
           </CardFooter>

@@ -19,10 +19,10 @@ interface GraphLayoutProps {
 }
 
 const layouts = [
-  { value: "dagre", label: "Hierarchical (dagre)" },
-  { value: "cose", label: "Force-directed (cose)" },
-  { value: "concentric", label: "Concentric" },
-  { value: "breadthfirst", label: "Breadth-first" },
+  { value: "dagre", label: "Jerárquico (dagre)" },
+  { value: "cose", label: "Fuerza dirigida (cose)" },
+  { value: "concentric", label: "Concéntrico" },
+  { value: "breadthfirst", label: "Amplitud primero" },
 ];
 
 export function GraphLayout({
@@ -36,7 +36,7 @@ export function GraphLayout({
     <div className="flex items-center gap-2">
       <Select value={layout} onValueChange={onLayoutChange}>
         <SelectTrigger className="h-8 w-40 text-xs">
-          <SelectValue placeholder="Layout" />
+          <SelectValue placeholder="Disposición" />
         </SelectTrigger>
         <SelectContent>
           {layouts.map((l) => (
@@ -47,14 +47,14 @@ export function GraphLayout({
         </SelectContent>
       </Select>
 
-      <Button variant="outline" size="icon" onClick={onZoomIn} title="Zoom in">
+      <Button variant="outline" size="icon" onClick={onZoomIn} title="Acercar">
         <ZoomIn className="h-4 w-4" />
       </Button>
       <Button
         variant="outline"
         size="icon"
         onClick={onZoomOut}
-        title="Zoom out"
+        title="Alejar"
       >
         <ZoomOut className="h-4 w-4" />
       </Button>
@@ -62,7 +62,7 @@ export function GraphLayout({
         variant="outline"
         size="icon"
         onClick={onFit}
-        title="Fit to screen"
+        title="Ajustar a pantalla"
       >
         <Maximize2 className="h-4 w-4" />
       </Button>

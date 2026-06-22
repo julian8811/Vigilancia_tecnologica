@@ -31,34 +31,34 @@ import Link from "next/link";
 import type { SurveillanceType } from "@/types/api";
 
 const createProjectSchema = z.object({
-  name: z.string().min(1, "Name is required").max(200),
-  topic: z.string().min(1, "Topic is required").max(500),
+  name: z.string().min(1, "El nombre es obligatorio").max(200),
+  topic: z.string().min(1, "El tema es obligatorio").max(500),
   description: z.string().optional(),
-  surveillance_type: z.string().min(1, "Surveillance type is required"),
-  language: z.string().min(1, "Language is required"),
+  surveillance_type: z.string().min(1, "El tipo de vigilancia es obligatorio"),
+  language: z.string().min(1, "El idioma es obligatorio"),
   slug: z.string().optional(),
 });
 
 type CreateProjectForm = z.infer<typeof createProjectSchema>;
 
 const surveillanceTypes: { value: SurveillanceType; label: string }[] = [
-  { value: "tecnologica", label: "Technological" },
-  { value: "cientifica", label: "Scientific" },
-  { value: "competitiva", label: "Competitive" },
-  { value: "estrategica", label: "Strategic" },
-  { value: "patentaria", label: "Patent" },
-  { value: "mercado", label: "Market" },
-  { value: "academica", label: "Academic" },
+  { value: "tecnologica", label: "Tecnológica" },
+  { value: "cientifica", label: "Científica" },
+  { value: "competitiva", label: "Competitiva" },
+  { value: "estrategica", label: "Estratégica" },
+  { value: "patentaria", label: "Patentaria" },
+  { value: "mercado", label: "Mercado" },
+  { value: "academica", label: "Académica" },
 ];
 
 const languages = [
-  { value: "es", label: "Spanish" },
-  { value: "en", label: "English" },
-  { value: "pt", label: "Portuguese" },
-  { value: "fr", label: "French" },
-  { value: "de", label: "German" },
-  { value: "zh", label: "Chinese" },
-  { value: "ja", label: "Japanese" },
+  { value: "es", label: "Español" },
+  { value: "en", label: "Inglés" },
+  { value: "pt", label: "Portugués" },
+  { value: "fr", label: "Francés" },
+  { value: "de", label: "Alemán" },
+  { value: "zh", label: "Chino" },
+  { value: "ja", label: "Japonés" },
 ];
 
 export default function CreateProjectPage() {
@@ -94,10 +94,10 @@ export default function CreateProjectPage() {
         language: data.language,
         slug: data.slug || undefined,
       });
-      toast.success("Project created!");
+      toast.success("¡Proyecto creado!");
       router.push(`/projects/${project.id}`);
     } catch (err: any) {
-      toast.error(err?.detail || err?.message || "Failed to create project");
+      toast.error(err?.detail || err?.message || "Error al crear proyecto");
     } finally {
       setSubmitting(false);
     }
@@ -113,10 +113,10 @@ export default function CreateProjectPage() {
         </Button>
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
-            Create Project
+            Crear proyecto
           </h2>
           <p className="text-muted-foreground">
-            Define a new technology surveillance project.
+            Definí un nuevo proyecto de vigilancia tecnológica.
           </p>
         </div>
       </div>
@@ -124,17 +124,17 @@ export default function CreateProjectPage() {
       <form onSubmit={handleSubmit(onSubmit)}>
         <Card>
           <CardHeader>
-            <CardTitle>Project Details</CardTitle>
+            <CardTitle>Detalles del proyecto</CardTitle>
             <CardDescription>
-              Configure the basic information for your surveillance project.
+              Configurá la información básica de tu proyecto.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name">Nombre *</Label>
               <Input
                 id="name"
-                placeholder="e.g., Quantum Computing Patents"
+                placeholder="Ej: Patentes de computación cuántica"
                 {...register("name")}
               />
               {errors.name && (
@@ -145,10 +145,10 @@ export default function CreateProjectPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="topic">Topic *</Label>
+              <Label htmlFor="topic">Tema *</Label>
               <Input
                 id="topic"
-                placeholder="e.g., Quantum computing, AI in healthcare"
+                placeholder="Ej: Computación cuántica, IA en salud"
                 {...register("topic")}
               />
               {errors.topic && (
@@ -159,27 +159,27 @@ export default function CreateProjectPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Descripción</Label>
               <Textarea
                 id="description"
-                placeholder="Optional project description..."
+                placeholder="Descripción opcional del proyecto..."
                 rows={3}
                 {...register("description")}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="slug">Slug (optional)</Label>
+              <Label htmlFor="slug">Slug (opcional)</Label>
               <Input
                 id="slug"
-                placeholder="Auto-generated from name if empty"
+                placeholder="Se genera automáticamente si está vacío"
                 {...register("slug")}
               />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Surveillance Type *</Label>
+                <Label>Tipo de vigilancia *</Label>
                 <Select
                   value={watchType}
                   onValueChange={(v) =>
@@ -187,7 +187,7 @@ export default function CreateProjectPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
+                    <SelectValue placeholder="Seleccionar tipo" />
                   </SelectTrigger>
                   <SelectContent>
                     {surveillanceTypes.map((t) => (
@@ -205,7 +205,7 @@ export default function CreateProjectPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Language *</Label>
+                <Label>Idioma *</Label>
                 <Select
                   value={watchLang}
                   onValueChange={(v) =>
@@ -213,7 +213,7 @@ export default function CreateProjectPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select language" />
+                    <SelectValue placeholder="Seleccionar idioma" />
                   </SelectTrigger>
                   <SelectContent>
                     {languages.map((l) => (

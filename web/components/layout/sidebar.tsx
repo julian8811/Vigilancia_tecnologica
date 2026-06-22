@@ -18,9 +18,9 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Projects", href: "/projects", icon: FolderKanban },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Panel", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Proyectos", href: "/projects", icon: FolderKanban },
+  { label: "Configuración", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {

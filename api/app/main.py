@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="VigilaGraph IA",
-    description="AI-powered technology surveillance API",
+    description="API de vigilancia tecnológica con IA",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -86,6 +86,6 @@ async def ready() -> dict:
     try:
         async with async_session_factory() as session:
             await session.execute(text("SELECT 1"))
-        return {"status": "ok", "database": "connected"}
+        return {"status": "ok", "database": "conectado"}
     except Exception as exc:
         return {"status": "degraded", "database": str(exc)}

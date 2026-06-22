@@ -42,7 +42,7 @@ class CorpusService:
         """Return a summary of the current corpus state for a project."""
         project = await self.project_repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         docs, total = await self.doc_repo.list_by_project(project_id, page=1, page_size=10000)
         corpus_path = self._corpus_path(project_id)
@@ -115,7 +115,7 @@ class CorpusService:
         """
         project = await self.project_repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         docs, total = await self.doc_repo.list_by_project(project_id, page=1, page_size=10000)
         extracted_docs = [d for d in docs if d.processing_status == "extracted" and d.text_path]
@@ -199,11 +199,11 @@ class CorpusService:
         without going through S3 upload.  Only works in development mode.
         """
         if not settings.is_development:
-            raise HTTPException(status_code=403, detail="Test seeding is only available in development mode")
+            raise HTTPException(status_code=403, detail="La siembra de prueba solo está disponible en modo desarrollo")
 
         project = await self.project_repo.get_with_org_check(project_id, org_id)
         if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
         corpus_path = self._corpus_path(project_id)
         corpus_path.mkdir(parents=True, exist_ok=True)

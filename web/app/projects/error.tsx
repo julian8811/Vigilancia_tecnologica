@@ -25,18 +25,18 @@ export default function ProjectsError({
           <div className="mb-2 flex justify-center">
             <AlertTriangle className="h-12 w-12 text-destructive" />
           </div>
-          <CardTitle>Failed to load projects</CardTitle>
+          <CardTitle>No se pudieron cargar los proyectos</CardTitle>
           <CardDescription>
-            There was an error loading the project list.
+            Hubo un error al cargar la lista de proyectos.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            {error.message || "An unexpected error occurred."}
+            {error.message || "Ocurrió un error inesperado."}
           </p>
         </CardContent>
         <CardFooter className="justify-center">
-          <Button onClick={reset}>Try again</Button>
+          <Button onClick={reset}>Intentar de nuevo</Button>
         </CardFooter>
       </Card>
     </div>
