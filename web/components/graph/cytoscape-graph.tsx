@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  useEffect,
+  useLayoutEffect,
   useRef,
   useImperativeHandle,
   forwardRef,
@@ -69,7 +69,7 @@ export const CytoscapeGraph = forwardRef<
   }));
 
   // Build the graph
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!containerRef.current) return;
     if (!nodes.length && !edges.length) return;
 
