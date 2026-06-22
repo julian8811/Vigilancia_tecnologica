@@ -1,16 +1,5 @@
 {
   "framework": "nextjs",
   "buildCommand": "bun run build",
-  "installCommand": "bun install",
-  "functions": {
-    "api/index.py": {
-      "memory": 512
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index"
-    }
-  ]
+  "installCommand": "bun install"
 }
