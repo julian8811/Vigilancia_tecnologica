@@ -12,7 +12,12 @@ import type {
 export function useGraphRuns(projectId: string) {
   return useQuery<GraphRun[]>({
     queryKey: ["graph-runs", projectId],
-    queryFn: () => api.get<GraphRun[]>(`/projects/${projectId}/graph/runs`),
+    queryFn: async () => {
+      const data = await api.get<PaginatedResponse<GraphRun>>(
+        `/projects/${projectId}/graph/runs`,
+      );
+      return data.items ?? [];
+    },
     enabled: !!projectId,
   });
 }
