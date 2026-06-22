@@ -20,14 +20,21 @@ local.env
 # ── Node / JS ─────────────────────────────────────────────────────
 node_modules/
 .next/
+.next.bak/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # ── Docker ────────────────────────────────────────────────────────
 docker-compose.override.yml
+.docker/
 
 # ── IDE / Editor ──────────────────────────────────────────────────
 .idea/
 .vscode/
 *.swp
+*.swo
 *~
 .DS_Store
 

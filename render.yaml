@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: vigilagraph-api
+    runtime: python
+    buildCommand: bash infra/render-build.sh
+    startCommand: cd api && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENV
+        value: production
+      - key: PYTHONPATH
+        value: api
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STORAGE_LOCAL_PATH
+        value: /tmp/vigilagraph-storage
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SEMANTIC_SCHOLAR_API_KEY
+        sync: false

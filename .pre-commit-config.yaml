@@ -1,0 +1,29 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        args: [check, --fix]
+        files: ^api/
+      - id: ruff-format
+        files: ^api/
+  - repo: local
+    hooks:
+      - id: mypy-api
+        name: mypy (API)
+        entry: bash -c 'cd apps/api && uv run mypy app/ --ignore-missing-imports'
+        language: system
+        files: ^api/
+        pass_filenames: false
+      - id: tsc
+        name: TypeScript check
+        entry: bash -c 'cd apps/web && npx tsc --noEmit'
+        language: system
+        files: ^web/
+        pass_filenames: false
+      - id: vitest
+        name: Frontend tests
+        entry: bash -c 'cd apps/web && npx vitest run'
+        language: system
+        files: ^web/
+        pass_filenames: false
