@@ -194,12 +194,12 @@ export interface GraphRun {
 export interface GraphNode {
   id: string;
   run_id: string;
-  node_id: string;
+  external_node_id: string;
   label: string;
   node_type: string;
-  community?: number;
-  centrality?: number;
-  metadata: Record<string, any>;
+  community_id?: number;
+  centrality_score?: number;
+  metadata_json: Record<string, any>;
 }
 
 export interface GraphEdge {
@@ -209,7 +209,7 @@ export interface GraphEdge {
   target_node_id: string;
   edge_type: string;
   weight: number;
-  metadata: Record<string, any>;
+  metadata_json: Record<string, any>;
 }
 
 // ─── Analysis ─────────────────────────────────────────────

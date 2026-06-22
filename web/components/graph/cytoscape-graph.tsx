@@ -83,7 +83,7 @@ export const CytoscapeGraph = forwardRef<
     const communities = Array.from(
       new Set(
         nodes
-          .map((n) => n.community)
+          .map((n) => n.community_id)
           .filter((c): c is number => c !== undefined && c !== null),
       ),
     );

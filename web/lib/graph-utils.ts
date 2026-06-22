@@ -11,12 +11,12 @@ export function elementsToCyData(
   const cyNodes: cytoscape.ElementDefinition[] = nodes.map((n) => ({
     group: "nodes",
     data: {
-      id: n.node_id || n.id,
+      id: n.external_node_id || n.id,
       label: n.label,
       nodeType: n.node_type,
-      community: n.community ?? 0,
-      centrality: n.centrality ?? 0,
-      metadata: n.metadata,
+      community: n.community_id ?? 0,
+      centrality: n.centrality_score ?? 0,
+      metadata: n.metadata_json,
       originalId: n.id,
     },
   }));
@@ -29,7 +29,7 @@ export function elementsToCyData(
       target: e.target_node_id,
       edgeType: e.edge_type,
       weight: e.weight ?? 1,
-      metadata: e.metadata,
+      metadata: e.metadata_json,
     },
   }));
 
@@ -57,8 +57,8 @@ export function filterNodes(
     }
     if (filters.communities && filters.communities.length > 0) {
       if (
-        n.community !== undefined &&
-        !filters.communities.includes(n.community)
+        n.community_id !== undefined &&
+        !filters.communities.includes(n.community_id)
       )
         return false;
     }
@@ -117,6 +117,6 @@ export function topNodes(
   limit: number = 10,
 ): GraphNode[] {
   return [...nodes]
-    .sort((a, b) => (b.centrality ?? 0) - (a.centrality ?? 0))
+    .sort((a, b) => (b.centrality_score ?? 0) - (a.centrality_score ?? 0))
     .slice(0, limit);
 }

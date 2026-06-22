@@ -25,24 +25,24 @@ export function NodeDetailPanel({
   // Find connected nodes
   const connectedEdges = allEdges.filter(
     (e) =>
-      e.source_node_id === (node.node_id || node.id) ||
-      e.target_node_id === (node.node_id || node.id),
+      e.source_node_id === (node.external_node_id || node.id) ||
+      e.target_node_id === (node.external_node_id || node.id),
   );
 
   const connectedNodeIds = new Set<string>();
   connectedEdges.forEach((e) => {
-    if (e.source_node_id !== (node.node_id || node.id))
+    if (e.source_node_id !== (node.external_node_id || node.id))
       connectedNodeIds.add(e.source_node_id);
-    if (e.target_node_id !== (node.node_id || node.id))
+    if (e.target_node_id !== (node.external_node_id || node.id))
       connectedNodeIds.add(e.target_node_id);
   });
 
   const connectedNodes = allNodes.filter((n) =>
-    connectedNodeIds.has(n.node_id || n.id),
+    connectedNodeIds.has(n.external_node_id || n.id),
   );
 
-  const metadataEntries = node.metadata
-    ? Object.entries(node.metadata).filter(
+  const metadataEntries = node.metadata_json
+    ? Object.entries(node.metadata_json).filter(
         ([, v]) => v !== null && v !== undefined,
       )
     : [];
@@ -67,7 +67,7 @@ export function NodeDetailPanel({
           {/* Node ID */}
           <div>
             <p className="text-xs text-muted-foreground">ID del nodo</p>
-            <p className="text-sm font-mono">{node.node_id || node.id}</p>
+            <p className="text-sm font-mono">{node.external_node_id || node.id}</p>
           </div>
 
           {/* Type */}
@@ -85,27 +85,27 @@ export function NodeDetailPanel({
           </div>
 
           {/* Community */}
-          {node.community !== undefined && node.community !== null && (
+          {node.community_id !== undefined && node.community_id !== null && (
             <div>
               <p className="text-xs text-muted-foreground">Comunidad</p>
               <Badge
                 className="mt-1"
                 style={{
-                  backgroundColor: communityColor(node.community),
+                  backgroundColor: communityColor(node.community_id),
                   color: "#fff",
                 }}
               >
-                {node.community}
+                {node.community_id}
               </Badge>
             </div>
           )}
 
           {/* Centrality */}
-          {node.centrality !== undefined && node.centrality !== null && (
+          {node.centrality_score !== undefined && node.centrality_score !== null && (
             <div>
               <p className="text-xs text-muted-foreground">Centralidad</p>
               <p className="text-sm font-medium">
-                {node.centrality.toFixed(4)}
+                {node.centrality_score.toFixed(4)}
               </p>
             </div>
           )}
@@ -115,7 +115,7 @@ export function NodeDetailPanel({
             variant="outline"
             size="sm"
             className="w-full"
-            onClick={() => onZoomToNode(node.node_id || node.id)}
+            onClick={() => onZoomToNode(node.external_node_id || node.id)}
           >
             <Search className="mr-2 h-4 w-4" />
             Acercar al nodo
@@ -133,7 +133,7 @@ export function NodeDetailPanel({
                 <button
                   key={cn.id}
                   className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent"
-                  onClick={() => onZoomToNode(cn.node_id || cn.id)}
+                  onClick={() => onZoomToNode(cn.external_node_id || cn.id)}
                 >
                   <span
                     className="h-2 w-2 rounded-full shrink-0"
