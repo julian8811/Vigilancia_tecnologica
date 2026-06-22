@@ -11,6 +11,7 @@ import {
 import cytoscape from "cytoscape";
 import type { GraphNode, GraphEdge } from "@/types/api";
 import { elementsToCyData, communityColor, getNodeTypeColor } from "@/lib/graph-utils";
+import { Loader2, AlertTriangle } from "lucide-react";
 
 // Dagre availability flag — loaded once via dynamic import
 let dagreAvailable = false;
@@ -45,6 +46,7 @@ export const CytoscapeGraph = forwardRef<
 >(({ nodes, edges, onNodeSelect, onNodeDeselect }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
+  const [initError, setInitError] = useState<string | null>(null);
 
   // Expose imperative methods
   useImperativeHandle(ref, () => ({
@@ -69,6 +71,7 @@ export const CytoscapeGraph = forwardRef<
   // Build the graph
   useEffect(() => {
     if (!containerRef.current) return;
+    if (!nodes.length && !edges.length) return;
 
     // Destroy previous instance
     if (cyRef.current) {
@@ -76,7 +79,8 @@ export const CytoscapeGraph = forwardRef<
       cyRef.current = null;
     }
 
-    const elements = elementsToCyData(nodes, edges);
+    try {
+      const elements = elementsToCyData(nodes, edges);
 
     // Build node type → color map for style
     const nodeTypes = Array.from(new Set(nodes.map((n) => n.node_type)));
@@ -204,7 +208,34 @@ export const CytoscapeGraph = forwardRef<
       cy.destroy();
       cyRef.current = null;
     };
+    } catch (err: any) {
+      console.error("Cytoscape init error:", err);
+      setInitError(err?.message || "Error al inicializar el grafo");
+    }
   }, [nodes, edges, onNodeSelect, onNodeDeselect]);
+
+  if (initError) {
+    return (
+      <div className="flex h-full w-full items-center justify-center" style={{ minHeight: "400px" }}>
+        <div className="flex flex-col items-center gap-3 text-center p-6">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+          <p className="font-medium text-sm">Error al renderizar el grafo</p>
+          <p className="text-xs text-muted-foreground">{initError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!nodes.length && !edges.length) {
+    return (
+      <div className="flex h-full w-full items-center justify-center" style={{ minHeight: "400px" }}>
+        <div className="flex flex-col items-center gap-3 text-center p-6">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Cargando grafo...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
