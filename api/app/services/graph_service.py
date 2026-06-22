@@ -115,10 +115,7 @@ class GraphService:
         try:
             # 4. Run Graphify CLI on the flat corpus
             command = settings.GRAPHIFY_COMMAND
-            cmd = [
-                command,
-                str(flat_corpus),
-            ]
+            cmd = [command, "extract", str(flat_corpus)]
 
             logger.info(
                 "graphify_subprocess_start",
