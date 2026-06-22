@@ -51,7 +51,7 @@ export default function GraphVisualizePage() {
     communities: selectedCommunities.length > 0 ? selectedCommunities : undefined,
   });
 
-  const filteredNodeIds = new Set(filteredNodes.map((n) => n.external_node_id || n.id));
+  const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
   const filteredEdges = allEdges.filter(
     (e) =>
       filteredNodeIds.has(e.source_node_id) &&
@@ -61,7 +61,7 @@ export default function GraphVisualizePage() {
   const handleNodeSelect = useCallback(
     (nodeId: string) => {
       const node = allNodes.find(
-        (n) => n.external_node_id === nodeId || n.id === nodeId,
+        (n) => n.id === nodeId,
       );
       setSelectedNode(node || null);
     },

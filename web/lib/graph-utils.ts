@@ -11,13 +11,13 @@ export function elementsToCyData(
   const cyNodes: cytoscape.ElementDefinition[] = nodes.map((n) => ({
     group: "nodes",
     data: {
-      id: n.external_node_id || n.id,
+      id: n.id,
       label: n.label,
       nodeType: n.node_type,
       community: n.community_id ?? 0,
       centrality: n.centrality_score ?? 0,
       metadata: n.metadata_json,
-      originalId: n.id,
+      externalNodeId: n.external_node_id,
     },
   }));
 
