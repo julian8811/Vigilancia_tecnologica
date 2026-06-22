@@ -1,25 +1,31 @@
 # OpenSpec Configuration — VigilaGraph IA
 project: VigilaGraph IA
-repo: vigilancia
-created: 2026-06-18
-updated: 2026-06-21
+repo: vigilancia/vigilagraph
+created: 2026-06-21
 artifact_store: hybrid
 
 context: |
   VigilaGraph IA — AI-powered technology surveillance analysis platform.
-  Python/FastAPI backend with SQLAlchemy 2 + Alembic, Celery + Redis task queue.
-  Next.js 14 (App Router) frontend with TypeScript, shadcn/ui, TanStack Query,
+  Python/FastAPI backend (SQLAlchemy async, httpx, trafilatura, OpenAI).
+  Next.js 14 (App Router) frontend with TypeScript, TanStack Query, shadcn/ui,
   Cytoscape.js for graph visualization. PostgreSQL + pgvector for embeddings,
   MinIO/Railway Buckets for S3-compatible object storage. Deployed on Railway.app.
-  Monorepo layout under viglagraph/ with apps/api/, apps/web/, apps/worker/.
+  Monorepo layout under viglagraph/ with apps/api/, apps/web/.
 
 stack:
   backend:
     language: Python 3.12+
-    framework: FastAPI (Mangum-compatible)
-    orm: SQLAlchemy 2 + Alembic
+    framework: FastAPI
+    orm: SQLAlchemy 2 async + Alembic
     validation: Pydantic v2
-    task_queue: Celery + Redis/Valkey
+    task_queue: none (direct async calls)
+    auth: python-jose + passlib + bcrypt
+    storage: boto3 (S3-compatible)
+    pdf: PyMuPDF
+    http: httpx + tenacity
+    scraping: trafilatura + scrapling
+    llm: openai
+    documents: pypdf, python-docx, openpyxl
   frontend:
     framework: Next.js 14 (App Router)
     language: TypeScript 5.x
@@ -31,9 +37,7 @@ stack:
     icons: Lucide React
     toast: Sonner
   database:
-    primary: PostgreSQL
-    vector: pgvector
-    cache_queue: Redis/Valkey
+    primary: PostgreSQL + pgvector
     storage: MinIO / Railway Buckets (S3-compatible)
   infrastructure:
     platform: Railway.app
@@ -43,7 +47,7 @@ stack:
 
 testing:
   strict_tdd: true
-  reason: "All test layers detected: pytest + pytest-asyncio + httpx (backend unit/integration), Vitest + @testing-library/react + happy-dom (frontend unit/integration), Playwright (E2E). Pre-commit hooks enforce test run and type checking."
+  reason: "71 tests across 3 apps (pytest + pytest-asyncio + Vitest). Test infrastructure confirmed passing."
   capabilities:
     backend:
       runner: pytest + pytest-asyncio
@@ -55,14 +59,10 @@ testing:
     frontend:
       runner: Vitest + Testing Library
       coverage: vitest --coverage (not yet configured)
-      e2e: Playwright
       layers:
         unit: true
         integration: true
-        e2e: true
-
-strict_tdd: true
-
+        e2e: false
 phase_rules:
   proposal:
     require_approval: true
