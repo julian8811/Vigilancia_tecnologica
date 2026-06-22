@@ -54,7 +54,7 @@ export function useGraphNodes(
   page = 1,
   filters?: { node_type?: string; community?: number },
 ) {
-  const params = new URLSearchParams({ page: String(page), page_size: "500" });
+  const params = new URLSearchParams({ page: String(page), page_size: "200" });
   if (filters?.node_type) params.set("node_type", filters.node_type);
   if (filters?.community !== undefined) params.set("community", String(filters.community));
 
@@ -77,7 +77,7 @@ export function useGraphEdges(
     queryKey: ["graph-edges", projectId, runId, page],
     queryFn: () =>
       api.get<PaginatedResponse<GraphEdge>>(
-        `/projects/${projectId}/graph/runs/${runId}/edges?page=${page}&page_size=500`,
+        `/projects/${projectId}/graph/runs/${runId}/edges?page=${page}&page_size=200`,
       ),
     enabled: !!projectId && !!runId,
   });

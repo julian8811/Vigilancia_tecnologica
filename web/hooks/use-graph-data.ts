@@ -35,7 +35,7 @@ export function useGraphData(
 
         while (true) {
           const nodeData = await api.get<PaginatedResponse<GraphNode>>(
-            `/projects/${projectId}/graph/runs/${runId}/nodes?page=${page}&page_size=500`,
+            `/projects/${projectId}/graph/runs/${runId}/nodes?page=${page}&page_size=200`,
           );
           allNodes.push(...nodeData.items);
           if (page >= nodeData.total_pages) break;
@@ -46,7 +46,7 @@ export function useGraphData(
         const allEdges: GraphEdge[] = [];
         while (true) {
           const edgeData = await api.get<PaginatedResponse<GraphEdge>>(
-            `/projects/${projectId}/graph/runs/${runId}/edges?page=${page}&page_size=500`,
+            `/projects/${projectId}/graph/runs/${runId}/edges?page=${page}&page_size=200`,
           );
           allEdges.push(...edgeData.items);
           if (page >= edgeData.total_pages) break;
