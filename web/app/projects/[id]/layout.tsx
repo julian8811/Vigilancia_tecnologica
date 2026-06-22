@@ -1,8 +1,9 @@
 "use client";
 
-import { useParams, usePathname } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useProject } from "@/hooks/use-projects";
+import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -20,12 +21,12 @@ import {
 import { cn } from "@/lib/utils";
 
 const statusLabels: Record<string, string> = {
-  draft: "Draft",
-  collecting: "Collecting",
-  processing: "Processing",
-  graph_ready: "Graph Ready",
-  report_ready: "Report Ready",
-  archived: "Archived",
+  draft: "Borrador",
+  collecting: "Recolectando",
+  processing: "Procesando",
+  graph_ready: "Grafo listo",
+  report_ready: "Informe listo",
+  archived: "Archivado",
 };
 
 interface Tab {
@@ -37,17 +38,17 @@ interface Tab {
 function useProjectTabs(projectId: string): Tab[] {
   return [
     {
-      label: "Overview",
+      label: "Resumen",
       href: `/projects/${projectId}`,
       icon: LayoutDashboard,
     },
     {
-      label: "Search",
+      label: "Búsqueda",
       href: `/projects/${projectId}/search`,
       icon: Search,
     },
     {
-      label: "Documents",
+      label: "Documentos",
       href: `/projects/${projectId}/documents`,
       icon: FileText,
     },
@@ -57,22 +58,22 @@ function useProjectTabs(projectId: string): Tab[] {
       icon: BookOpen,
     },
     {
-      label: "Graph",
+      label: "Grafo",
       href: `/projects/${projectId}/graph`,
       icon: Share2,
     },
     {
-      label: "Analysis",
+      label: "Análisis",
       href: `/projects/${projectId}/analysis`,
       icon: BarChart3,
     },
     {
-      label: "Reports",
+      label: "Informes",
       href: `/projects/${projectId}/reports`,
       icon: FileBarChart,
     },
     {
-      label: "Logs",
+      label: "Registros",
       href: `/projects/${projectId}/logs`,
       icon: ScrollText,
     },
@@ -86,9 +87,17 @@ export default function ProjectDetailLayout({
 }) {
   const params = useParams();
   const pathname = usePathname();
+  const router = useRouter();
   const projectId = params.id as string;
+  const { user, loading: authLoading } = useAuth();
   const { data: project, isLoading } = useProject(projectId);
   const tabs = useProjectTabs(projectId);
+
+  // Redirect to login if not authenticated
+  if (!authLoading && !user) {
+    router.replace("/login");
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -123,7 +132,7 @@ export default function ProjectDetailLayout({
               </Badge>
             </div>
           ) : (
-            <p className="text-muted-foreground">Project not found</p>
+            <p className="text-muted-foreground">Proyecto no encontrado</p>
           )}
         </div>
       </div>
