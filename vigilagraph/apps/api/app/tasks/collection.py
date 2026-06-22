@@ -1,6 +1,5 @@
-"""Collection runner — calls the worker's collection logic directly, no Celery.
+"""Collection runner — calls API-local collection logic directly, no Celery.
 
-Requires PYTHONPATH to include apps/api and apps/worker so imports work.
 Limited to 25 docs per run for Vercel 10s timeout.
 """
 
@@ -22,8 +21,8 @@ BATCH_SIZE = 10
 async def run_collection(db: AsyncSession, run_id: str) -> None:
     """Execute document collection synchronously (replaces Celery task).
 
-    This runs the worker's collection logic directly using the API's
-    database session. It imports the worker's connectors at runtime.
+    This runs collection logic directly using the API's
+    database session. It imports the connectors at runtime.
     """
     run_uuid = uuid.UUID(run_id)
     logger.info("collection_started", run_id=run_id)
@@ -34,11 +33,11 @@ async def run_collection(db: AsyncSession, run_id: str) -> None:
         from app.models.project import SurveillanceProject
         from app.models.search_strategy import SearchStrategy
         from app.core.config import settings
-        from worker.connectors.openalex import OpenAlexConnector
-        from worker.connectors.semantic_scholar import SemanticScholarConnector
-        from worker.connectors.lens import LensConnector
-        from worker.connectors.web import WebScraperConnector, _parse_urls
-        from worker.tasks.collection_tasks import (
+        from app.connectors.openalex import OpenAlexConnector
+        from app.connectors.semantic_scholar import SemanticScholarConnector
+        from app.connectors.lens import LensConnector
+        from app.connectors.web import WebScraperConnector, _parse_urls
+        from app.tasks.collection_helpers import (
             _build_search_query,
             _compute_checksum,
             _is_source_selected,

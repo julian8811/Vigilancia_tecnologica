@@ -5,8 +5,8 @@ from __future__ import annotations
 from structlog import get_logger
 from typing import Any
 
-from worker.ai.client import AIClient
-from worker.ai.prompts import (
+from app.ai.client import AIClient
+from app.ai.prompts import (
     SEARCH_STRATEGY_SYSTEM,
     TECHNOLOGY_EXTRACTION_SYSTEM,
     TREND_ANALYSIS_SYSTEM,
@@ -15,7 +15,7 @@ from worker.ai.prompts import (
     DOCUMENT_CLASSIFICATION_SYSTEM,
     GRAPH_ENRICHMENT_SYSTEM,
 )
-from worker.ai.schemas import (
+from app.ai.schemas import (
     SearchStrategyOutput,
     TechnologyList,
     TrendList,

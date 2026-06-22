@@ -22,7 +22,7 @@ async def run_analysis(db: AsyncSession, project_id: str, topic: str) -> None:
         from app.models.document import Document
         from app.models.project import SurveillanceProject
         from app.core.config import settings
-        from worker.ai.service import AnalysisService as AIAnalysis
+        from app.ai.service import AnalysisService as AIAnalysis
 
         project = await db.get(SurveillanceProject, pid)
         if project is None:

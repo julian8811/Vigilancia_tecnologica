@@ -21,7 +21,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from worker.connectors.base import BaseConnector
+from app.connectors.base import BaseConnector
 
 logger = get_logger(__name__)
 
