@@ -47,6 +47,14 @@ export const CytoscapeGraph = forwardRef<
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    label: string;
+    nodeType: string;
+    description: string;
+  }>({ visible: false, x: 0, y: 0, label: "", nodeType: "", description: "" });
 
   // Expose imperative methods
   useImperativeHandle(ref, () => ({
@@ -196,6 +204,31 @@ export const CytoscapeGraph = forwardRef<
       onNodeSelect(nodeId);
     });
 
+    // Node hover → show tooltip
+    cy.on("mouseover", "node", (evt) => {
+      const node = evt.target;
+      const pos = node.renderedPosition();
+      const data = node.data();
+      const meta = data.metadata || {};
+      setTooltip({
+        visible: true,
+        x: pos.x,
+        y: pos.y,
+        label: data.label || "",
+        nodeType: data.nodeType || "concept",
+        description:
+          meta.abstract ||
+          meta.title ||
+          meta.description ||
+          meta.evidence ||
+          "",
+      });
+    });
+
+    cy.on("mouseout", "node", () => {
+      setTooltip((t) => ({ ...t, visible: false }));
+    });
+
     // Background click → deselect
     cy.on("tap", (evt) => {
       if (evt.target === cy) {
@@ -238,11 +271,32 @@ export const CytoscapeGraph = forwardRef<
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="h-full w-full"
-      style={{ minHeight: "400px" }}
-    />
+    <div className="relative h-full w-full">
+      <div
+        ref={containerRef}
+        className="h-full w-full"
+        style={{ minHeight: "400px" }}
+      />
+      {tooltip.visible && (
+        <div
+          className="pointer-events-none absolute z-50 max-w-xs rounded-lg border border-border bg-card px-3 py-2 shadow-lg"
+          style={{
+            left: Math.min(tooltip.x + 20, (containerRef.current?.clientWidth || 600) - 280),
+            top: tooltip.y - 20,
+          }}
+        >
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            {tooltip.nodeType === "paper" ? "Artículo" : tooltip.nodeType === "concept" ? "Concepto" : tooltip.nodeType}
+          </p>
+          <p className="text-sm font-semibold leading-snug">{tooltip.label}</p>
+          {tooltip.description && (
+            <p className="mt-1 text-xs text-muted-foreground line-clamp-4">
+              {tooltip.description}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 });
 

@@ -184,6 +184,10 @@ class GraphService:
             nodes_imported = await self._import_nodes(run_id, graph_data)
             edges_imported = await self._import_edges(run_id, graph_data, graph_data.get("nodes", []))
 
+            # 5b. Import mention edges between documents (paper nodes) and concepts
+            mention_edges = await self._import_mention_edges(run_id)
+            edges_imported += mention_edges
+
             # 6. Update run stats
             run.status = "completed"
             run.finished_at = datetime.now(UTC)
@@ -398,7 +402,67 @@ class GraphService:
             self.db.add(node)
             imported += 1
 
+        # Also import source documents as "paper" nodes
+        papers_imported = await self._import_document_nodes(run_id)
+        imported += papers_imported
+
         await self.db.flush()
+        return imported
+
+    async def _import_document_nodes(self, run_id: uuid.UUID) -> int:
+        """Import source documents as 'paper' nodes in the graph."""
+        from app.models.document import Document
+        from app.models.graph_run import GraphRun as GraphRunModel
+        from sqlalchemy import select
+
+        run = await self.db.execute(
+            select(GraphRunModel).where(GraphRunModel.id == run_id)
+        )
+        run_obj = run.scalar_one_or_none()
+        if run_obj is None:
+            return 0
+
+        project_id = run_obj.project_id
+        docs_result = await self.db.execute(
+            select(Document)
+            .where(Document.project_id == project_id)
+            .where(Document.abstract.isnot(None))
+        )
+        documents = docs_result.scalars().all()
+
+        imported = 0
+        for doc in documents:
+            existing = await self.db.execute(
+                select(GraphNode).where(
+                    (GraphNode.run_id == run_id) &
+                    (GraphNode.external_node_id == f"doc_{doc.id}")
+                )
+            )
+            if existing.scalar_one_or_none():
+                continue
+
+            metadata = {
+                "title": doc.title or "",
+                "abstract": doc.abstract or "",
+                "url": doc.url or "",
+                "doi": doc.doi or "",
+                "authors": doc.authors if isinstance(doc.authors, list) else [],
+                "year": doc.publication_year,
+                "source": doc.source_name or "",
+            }
+
+            paper = GraphNode(
+                run_id=run_id,
+                external_node_id=f"doc_{doc.id}",
+                label=str(doc.title or "Sin título")[:500],
+                node_type="paper",
+                community_id=None,
+                centrality_score=None,
+                metadata_json=metadata,
+            )
+            self.db.add(paper)
+            imported += 1
+
         return imported
 
     async def _import_edges(self, run_id: uuid.UUID, graph_data: dict, nodes: list[dict]) -> int:
@@ -452,7 +516,91 @@ class GraphService:
         await self.db.flush()
         return imported
 
-    async def get_run(self, run_id: uuid.UUID) -> GraphRun:
+    async def _import_mention_edges(self, run_id: uuid.UUID) -> int:
+        """Create 'mentions' edges between document (paper) nodes and concept nodes
+        by matching document text to concept labels."""
+        from app.models.document import Document
+        from app.models.graph_run import GraphRun as GraphRunModel
+        from sqlalchemy import select
+        import re
+
+        run = await self.db.execute(
+            select(GraphRunModel).where(GraphRunModel.id == run_id)
+        )
+        run_obj = run.scalar_one_or_none()
+        if run_obj is None:
+            return 0
+
+        project_id = run_obj.project_id
+
+        # Load all concept nodes for this run (non-paper)
+        concepts_result = await self.db.execute(
+            select(GraphNode).where(
+                (GraphNode.run_id == run_id) &
+                (GraphNode.node_type != "paper")
+            )
+        )
+        concepts = concepts_result.scalars().all()
+        if not concepts:
+            return 0
+
+        # Load all paper nodes for this run
+        papers_result = await self.db.execute(
+            select(GraphNode).where(
+                (GraphNode.run_id == run_id) &
+                (GraphNode.node_type == "paper")
+            )
+        )
+        papers = papers_result.scalars().all()
+        if not papers:
+            return 0
+
+        # Load documents
+        docs_result = await self.db.execute(
+            select(Document).where(
+                (Document.project_id == project_id) &
+                (Document.abstract.isnot(None))
+            )
+        )
+        documents = {str(doc.id): doc for doc in docs_result.scalars().all()}
+
+        # Index concepts by keyword for fast lookup
+        concept_keywords: dict[str, list] = {}
+        for concept in concepts:
+            label_lower = concept.label.lower()
+            words = [w for w in re.split(r"\W+", label_lower) if len(w) >= 4]
+            for word in words:
+                concept_keywords.setdefault(word, []).append(concept)
+
+        imported = 0
+        for paper in papers:
+            doc_id = paper.external_node_id.replace("doc_", "")
+            doc = documents.get(doc_id)
+            if doc is None or not doc.abstract:
+                continue
+
+            abstract_lower = doc.abstract.lower()
+            matched_concept_ids: set = set()
+            for word, word_concepts in concept_keywords.items():
+                if word in abstract_lower:
+                    for c in word_concepts:
+                        matched_concept_ids.add(c.id)
+
+            for concept in concepts:
+                if concept.id not in matched_concept_ids:
+                    continue
+                edge = GraphEdge(
+                    run_id=run_id,
+                    source_node_id=paper.id,
+                    target_node_id=concept.id,
+                    edge_type="mentions",
+                    weight=1.0,
+                    metadata_json={"doc_id": doc_id, "concept": concept.label},
+                )
+                self.db.add(edge)
+                imported += 1
+
+        return imported
         """Fetch a graph run by ID (no org check — caller must verify)."""
         run = await self.run_repo.get(run_id)
         if run is None:
