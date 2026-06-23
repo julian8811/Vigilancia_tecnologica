@@ -80,7 +80,7 @@ export function GraphFilters({
                   }
                   onChange={() => toggleType(type)}
                 />
-                <span className="capitalize">{type}</span>
+                <span className="capitalize">{type === "concept" ? "Concepto" : type === "technology" ? "Tecnología" : type === "organization" ? "Organización" : type === "person" ? "Persona" : type === "patent" ? "Patente" : type === "paper" ? "Artículo" : type === "product" ? "Producto" : type}</span>
               </label>
             ))}
           </div>
