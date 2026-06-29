@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/use-auth";
+import { RequireAuth } from "@/components/auth/require-auth";
 import {
   Card,
   CardContent,
@@ -14,6 +15,7 @@ export default function SettingsPage() {
   const { user } = useAuth();
 
   return (
+    <RequireAuth>
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Configuración</h2>
@@ -50,5 +52,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+    </RequireAuth>
   );
 }

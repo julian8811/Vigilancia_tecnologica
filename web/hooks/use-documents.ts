@@ -42,8 +42,8 @@ export function useUploadDocument() {
         body: formData,
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Upload failed" }));
-        throw new Error(err.error || "Upload failed");
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || "Upload failed");
       }
       return res.json() as Promise<Document>;
     },
