@@ -33,6 +33,7 @@ dependencies = [
     "python-docx>=1.1",
     "pypdf>=5.1",
     "graphifyy>=0.1",
+    "redis>=5.0,<6.0",
 ]
 
 [tool.uv]
@@ -44,6 +45,8 @@ dev-dependencies = [
     "mypy>=1.13",
     "aiosqlite>=0.22.1",
     "pysqlite3-binary>=0.5.4.post2",
+    "fakeredis>=2.23,<3.0",
+    "lupa>=2.0",
 ]
 
 [tool.setuptools.packages.find]
