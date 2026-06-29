@@ -33,7 +33,7 @@ The web app talks to the API only. The API orchestrates ingestion, analysis, and
 Tables (see `api/app/models/` for the SQLAlchemy definitions):
 
 - `organizations` — tenant boundary.
-- `users` — belongs to one organization, has `role` and `is_superuser` flags (decorative, see [ADR-003](#adr-003-rbac-not-yet-enforced)).
+- `users` — belongs to one organization, has `role` and `is_superuser` flags (enforced, see [ADR-003](#adr-003-rbac-enforced-on-mutating-endpoints)).
 - `surveillance_projects` — the unit of work; each project has one organization.
 - `search_strategies` — query templates scoped to a project.
 - `documents` — uploaded or URL-fetched source material.
@@ -104,6 +104,7 @@ This section tracks the gaps found in the technical audit (2026-06-29). See [SEC
 ### HIGH — significant risk
 
 - `/ready` returns 200 when degraded (`api/app/main.py:83-91`).
+
 - No PII redaction in logs (`api/app/services/auth_service.py:42,73,...`).
 - No audit log for sensitive operations.
 - Inconsistent error response shape (`{error}` vs `{detail}`).
@@ -167,13 +168,12 @@ The Redis that backs the app today (cache + future broker) can also host BullMQ.
 **Decision:** Use SQLAlchemy 2.0 with the async dialect (`asyncpg`). Pydantic v2 for request/response schemas. Alembic for migrations.
 **Consequences:** Pydantic v2 has stricter validation than v1 — caught several issues at boot time. Async SQLAlchemy 2.0 is well-supported but has rough edges around relationships; we keep them shallow.
 
-### ADR-003: RBAC not yet enforced
+### ADR-003: RBAC enforced on mutating endpoints
 
-**Status:** Provisional.
-**Context:** The `User` model has `role` and `is_superuser` columns. The `require_roles(*roles)` dependency is defined in `api/app/api/deps.py:108-128`.
-**Decision:** The columns and helper exist but **no router currently calls `require_roles`**. Authorization today is org-based only (`verify_project_org`).
-**Consequences:** The platform currently treats all org members as equal. This is fine for a single-org deployment but must be wired before multi-tenant public release.
-**Action item:** Add `require_roles("owner", "admin")` on destructive routes (project delete, member management), or drop the `role` column until needed.
+**Status:** Implemented.
+**Context:** The `User` model has `role` and `is_superuser` columns. The `require_min_role(min_role)` dependency is defined in `app/api/deps.py:203-229`.
+**Decision:** All mutating endpoints (POST, PUT, PATCH, DELETE) now gate via `require_min_role(Role.ANALYST)`. Read-only endpoints remain open to `viewer`. Superusers bypass all checks.
+**Consequences:** (+) RBAC is now wired across all routers. (-) The exact permission matrix needs review before multi-tenant public release.
 
 ### ADR-004: Graphify as an external CLI
 

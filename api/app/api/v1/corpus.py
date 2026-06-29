@@ -8,13 +8,20 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from app.api.deps import get_current_active_user, get_db, verify_project_org
+from app.api.deps import get_current_active_user, get_db, require_min_role, verify_project_org
+from app.core.permissions import Role
 from app.models.user import User
 from app.schemas.corpus import CorpusEntry, CorpusSummary
 from app.services.corpus_service import CorpusService
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/projects/{project_id}/corpus", tags=["corpus"])
+
+
+# Mutating endpoints (POST) gate on ``analyst``+; reads stay open
+# to every authenticated user. Mirrors the pattern in projects.py,
+# reports.py, and the rest of the mutating routers.
+_require_analyst = require_min_role(Role.ANALYST)
 
 
 def _get_service(db: AsyncSession) -> CorpusService:
@@ -36,7 +43,7 @@ async def corpus_summary(
 @router.post("/rebuild", response_model=CorpusSummary)
 async def corpus_rebuild(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> CorpusSummary:
@@ -61,7 +68,7 @@ async def corpus_ready(
 async def seed_test_docs(
     project_id: uuid.UUID,
     count: int = Query(3, ge=1, le=10),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> list[CorpusEntry]:
