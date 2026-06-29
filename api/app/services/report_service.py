@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import uuid
 from datetime import datetime, UTC
@@ -21,6 +22,19 @@ from app.models.report import Report
 from app.repositories.report_repository import ReportRepository
 
 logger = get_logger(__name__)
+
+
+def h(value: object) -> str:
+    """HTML-escape any user-supplied value before interpolating into a template.
+
+    Every interpolation of a document title, technology name, actor name,
+    trend description, etc. into the HTML report MUST go through this helper.
+    A document with title '<script>alert(1)</script>' will execute in any
+    browser that opens the generated report without this.
+    """
+    if value is None:
+        return ""
+    return html.escape(str(value), quote=True)
 
 REPORT_TEMPLATE_HTML = """<!DOCTYPE html>
 <html lang="es">
@@ -243,40 +257,40 @@ class ReportService:
         def doc_rows():
             rows = ""
             for d in docs[:20]:
-                rows += f"<tr><td>{d.title or '?'}</td><td>{d.document_type or 'N/A'}</td><td>{d.source_name or 'manual'}</td></tr>"
+                rows += f"<tr><td>{h(d.title) or '?'}</td><td>{h(d.document_type) or 'N/A'}</td><td>{h(d.source_name) or 'manual'}</td></tr>"
             return rows
 
         def tech_rows():
             rows = ""
             for t in technologies:
-                rows += f"<tr><td>{t.name}</td><td>{t.category or 'N/A'}</td><td>{t.trl_level or 'N/A'}</td></tr>"
+                rows += f"<tr><td>{h(t.name)}</td><td>{h(t.category) or 'N/A'}</td><td>{h(t.trl_level) or 'N/A'}</td></tr>"
             return rows
 
         def trend_rows():
             rows = ""
             for t in trends:
                 badge_class = {"emerging": "badge-emerging", "growing": "badge-growing", "declining": "badge-declining"}.get(t.momentum or "", "")
-                rows += f"<tr><td>{t.name}</td><td><span class='badge {badge_class}'>{t.momentum or 'N/A'}</span></td><td>{t.description or ''}</td></tr>"
+                rows += f"<tr><td>{h(t.name)}</td><td><span class='badge {badge_class}'>{h(t.momentum) or 'N/A'}</span></td><td>{h(t.description) or ''}</td></tr>"
             return rows
 
         def actor_rows():
             rows = ""
             for a in actors:
-                rows += f"<tr><td>{a.name}</td><td>{a.actor_type or 'N/A'}</td><td>{a.country or 'N/A'}</td></tr>"
+                rows += f"<tr><td>{h(a.name)}</td><td>{h(a.actor_type) or 'N/A'}</td><td>{h(a.country) or 'N/A'}</td></tr>"
             return rows
 
         def opp_rows():
             rows = ""
             for o in opportunities:
-                rows += f"<tr><td>{o.title}</td><td>{o.opportunity_type or 'N/A'}</td><td>{o.priority or 'N/A'}</td></tr>"
+                rows += f"<tr><td>{h(o.title)}</td><td>{h(o.opportunity_type) or 'N/A'}</td><td>{h(o.priority) or 'N/A'}</td></tr>"
             return rows
 
         return REPORT_TEMPLATE_HTML.format(
-            title=title,
-            date=date,
-            topic=topic,
-            description=description,
-            status=status,
+            title=h(title),
+            date=h(date),
+            topic=h(topic),
+            description=h(description),
+            status=h(status),
             doc_count=len(docs),
             doc_table=f"<table><tr><th>Título</th><th>Tipo</th><th>Fuente</th></tr>{doc_rows()}</table>" if docs else "<p>Sin documentos</p>",
             tech_table=f"<table><tr><th>Tecnología</th><th>Categoría</th><th>TRL</th></tr>{tech_rows()}</table>" if technologies else "<p>Sin tecnologías identificadas</p>",
@@ -300,14 +314,14 @@ class ReportService:
         opportunities: list,
     ) -> str:
         lines = [
-            f"# {title}",
+            f"# {h(title)}",
             f"",
-            f"Generado el {date} | VigilaGraph IA",
+            f"Generado el {h(date)} | VigilaGraph IA",
             f"",
             f"## Resumen del proyecto",
             f"",
-            f"- **Tema:** {topic}",
-            f"- **Descripción:** {description}",
+            f"- **Tema:** {h(topic)}",
+            f"- **Descripción:** {h(description)}",
             f"- **Estado:** {status}",
             f"",
             f"## Documentos",
@@ -316,35 +330,35 @@ class ReportService:
             f"",
         ]
         for d in docs[:20]:
-            lines.append(f"- {d.title} ({d.document_type or 'N/A'}) [{d.source_name or 'manual'}]")
+            lines.append(f"- {h(d.title)} ({h(d.document_type) or 'N/A'}) [{h(d.source_name) or 'manual'}]")
 
         if technologies:
             lines.extend(["", "## Tecnologías identificadas", ""])
             lines.append("| Tecnología | Categoría | TRL |")
             lines.append("|-----------|----------|-----|")
             for t in technologies:
-                lines.append(f"| {t.name} | {t.category or 'N/A'} | {t.trl_level or 'N/A'} |")
+                lines.append(f"| {h(t.name)} | {h(t.category) or 'N/A'} | {h(t.trl_level) or 'N/A'} |")
 
         if trends:
             lines.extend(["", "## Tendencias", ""])
             lines.append("| Tendencia | Dirección | Descripción |")
             lines.append("|----------|----------|-------------|")
             for t in trends:
-                lines.append(f"| {t.name} | {t.momentum or 'N/A'} | {t.description or ''} |")
+                lines.append(f"| {h(t.name)} | {h(t.momentum) or 'N/A'} | {h(t.description) or ''} |")
 
         if actors:
             lines.extend(["", "## Actores clave", ""])
             lines.append("| Actor | Tipo | País |")
             lines.append("|-------|------|------|")
             for a in actors:
-                lines.append(f"| {a.name} | {a.actor_type or 'N/A'} | {a.country or 'N/A'} |")
+                lines.append(f"| {h(a.name)} | {h(a.actor_type) or 'N/A'} | {h(a.country) or 'N/A'} |")
 
         if opportunities:
             lines.extend(["", "## Oportunidades", ""])
             lines.append("| Oportunidad | Tipo | Prioridad |")
             lines.append("|------------|------|-----------|")
             for o in opportunities:
-                lines.append(f"| {o.title} | {o.opportunity_type or 'N/A'} | {o.priority or 'N/A'} |")
+                lines.append(f"| {h(o.title)} | {h(o.opportunity_type) or 'N/A'} | {h(o.priority) or 'N/A'} |")
 
         lines.extend(["", "", "---", "Reporte generado automáticamente por VigilaGraph IA."])
         return "\n".join(lines)
