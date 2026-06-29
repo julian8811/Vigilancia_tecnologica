@@ -26,14 +26,20 @@ async def test_create_project(client: AsyncClient, auth_headers: dict[str, str])
 
 @pytest.mark.asyncio
 async def test_create_project_no_org(client: AsyncClient):
-    """User without org cannot create a project → 403."""
+    """Unauthenticated POST to a mutating endpoint is rejected.
+
+    The CSRFMiddleware runs before the auth dependency, so a
+    request with neither a CSRF token nor a session gets 403
+    (CSRF) instead of 401 (no auth). Either response is correct
+    from a security standpoint — the request is rejected.
+    """
     resp = await client.post("/api/v1/projects", json={
         "name": "Orphan",
         "topic": "test",
         "surveillance_type": "technological",
         "language": "en",
     })
-    assert resp.status_code == 401, resp.text  # no token at all
+    assert resp.status_code in (401, 403), resp.text  # rejected, no session
 
 
 @pytest.mark.asyncio

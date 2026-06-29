@@ -14,12 +14,19 @@ Both tokens are delivered via ``Set-Cookie`` headers by
 ``set_session_cookies`` in app.api.v1.auth, never in the response
 body. The body carries only the user profile.
 
+A third cookie, ``vg_csrf``, is the CSRF double-submit token. The
+browser sends it on every request; the SPA echoes its value in the
+``X-CSRF-Token`` header on mutating calls (see
+``app.core.csrf``). Unlike the JWTs, this cookie is **not**
+httpOnly — the SPA has to be able to read it.
+
 The token-claim ``type`` lets the verifier reject cross-use (an
 access token presented to ``/auth/refresh`` returns 401).
 """
 
 from __future__ import annotations
 
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -191,3 +198,61 @@ def set_refresh_cookie(response: Response, *, refresh_token: str) -> None:
         value=refresh_token,
         **_cookie_attrs(settings.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60),
     )
+
+
+# ── CSRF double-submit token ───────────────────────────────────────────
+
+
+def _csrf_cookie_attrs() -> dict[str, Any]:
+    """Attributes for the vg_csrf cookie.
+
+    Unlike the JWT cookies, this one is **not** httpOnly: the SPA
+    needs to read it via ``document.cookie`` and echo the value in
+    the ``X-CSRF-Token`` header on every mutating request. All
+    other attributes match the JWT cookies (path=/, SameSite=Lax,
+    Secure follows ``settings.COOKIE_SECURE``). The max-age matches
+    the refresh-token lifetime so a user stays protected across the
+    SPA's normal tab-resume patterns.
+    """
+    return {
+        "max_age": settings.JWT_REFRESH_EXPIRATION_DAYS * 24 * 60 * 60,
+        "httponly": False,
+        "secure": settings.COOKIE_SECURE,
+        "samesite": "lax",
+        "path": "/",
+    }
+
+
+def set_csrf_cookie(response: Response, *, token: str) -> None:
+    """Attach the vg_csrf cookie to *response* with the given *token*."""
+    response.set_cookie(
+        key=settings.CSRF_COOKIE_NAME,
+        value=token,
+        **_csrf_cookie_attrs(),
+    )
+
+
+def rotate_csrf_cookie(response: Response) -> str:
+    """Generate a fresh CSRF token, set the cookie, and return the token.
+
+    ``secrets.token_urlsafe(32)`` produces a 43-char URL-safe string
+    with 256 bits of entropy — large enough that guessing is
+    infeasible, small enough to fit comfortably in a header.
+    """
+    token = secrets.token_urlsafe(32)
+    set_csrf_cookie(response, token=token)
+    return token
+
+
+def clear_csrf_cookie(response: Response) -> None:
+    """Delete the vg_csrf cookie (called on logout)."""
+    response.delete_cookie(settings.CSRF_COOKIE_NAME, path="/")
+
+
+def get_csrf_cookie(request) -> str | None:
+    """Read the current vg_csrf cookie value from the request, if any.
+
+    Used by /auth/me to surface the token in the response body so
+    the SPA has it before its first mutating call.
+    """
+    return request.cookies.get(settings.CSRF_COOKIE_NAME)

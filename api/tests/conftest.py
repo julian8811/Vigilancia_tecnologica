@@ -203,6 +203,10 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
 
     Uses the same register endpoint a real client would hit, ensuring the
     test user + org exist in the DB before any authenticated request.
+
+    Also includes the CSRF token in the returned headers so tests
+    that hit mutating endpoints don't trip the CSRFMiddleware (the
+    Bearer token alone is not enough — the SPA sends both).
     """
     import secrets
 
@@ -218,6 +222,12 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
     # Cookie-based auth: extract the vg_access token from the
     # Set-Cookie header for use in Authorization: Bearer calls.
     token = resp.cookies.get("vg_access")
+    # CSRF double-submit: the server set vg_csrf on the response;
+    # the SPA echoes it in the X-CSRF-Token header. The middleware
+    # only checks the header against the cookie, so any source for
+    # the token is fine.
+    csrf_token = data.get("csrf_token") or resp.cookies.get("vg_csrf")
+    assert csrf_token, "Register response must include a CSRF token (cookie or body)"
 
     # Override the current-user dependency with the registered user so tests
     # that use auth_headers DON'T hit the login endpoint again.
@@ -244,7 +254,10 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
             return user
 
     app.dependency_overrides[get_current_active_user] = _override_current_user
-    return {"Authorization": f"Bearer {token}"}
+    return {
+        "Authorization": f"Bearer {token}",
+        "X-CSRF-Token": csrf_token,
+    }
 
 
 @pytest.fixture

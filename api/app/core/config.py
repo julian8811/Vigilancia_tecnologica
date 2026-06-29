@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     # Names of the cookies set on /auth/login and /auth/register.
     ACCESS_TOKEN_COOKIE: str = "vg_access"
     REFRESH_TOKEN_COOKIE: str = "vg_refresh"
+    # Name of the CSRF double-submit cookie. JS reads it via
+    # document.cookie and echoes the value in the X-CSRF-Token header
+    # on every mutating request. See app.core.csrf.
+    CSRF_COOKIE_NAME: str = "vg_csrf"
     # When True, the cookies are marked Secure (HTTPS-only). Enable
     # in production; the api container is reachable on plain HTTP
     # locally so it stays False in dev.
