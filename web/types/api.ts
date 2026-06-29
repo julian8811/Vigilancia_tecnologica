@@ -1,11 +1,9 @@
 // ─── Auth ────────────────────────────────────────────────
-export interface AuthTokens {
-  access_token: string;
-  token_type: string;
-}
-
+// Tokens are now in httpOnly cookies — they never reach JavaScript.
+// LoginRequest/RegisterRequest carry the same shape as the API
+// expects in the request body.
 export interface LoginRequest {
-  username: string;
+  email: string;
   password: string;
 }
 
