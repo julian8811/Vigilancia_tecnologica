@@ -142,17 +142,28 @@ ADRs live in [`docs/adr/`](adr/). Each ADR captures the context, decision, and c
 
 ### ADR-001: In-process background tasks
 
-**Status:** Accepted (with caveat).
-**Context:** The original design had a Celery worker as a separate process. For a single-service MVP, the operational cost of running two processes (API + worker) was not justified.
-**Decision:** Replace Celery with `asyncio.create_task` invocations inside the request handlers. Tasks are defined in `api/app/tasks/` and called via `import asyncio as _asyncio; _asyncio.create_task(task_fn(...))` from services.
-**Consequences:**
-- (+) Simpler deployment: one process, one Dockerfile, one start command.
-- (+) Lower resource cost for low-volume usage.
-- (−) Tasks do not survive a process restart. If the API server crashes mid-collection, the in-flight work is lost.
-- (−) Tasks do **not** work on serverless platforms (Vercel, AWS Lambda). If we ever target serverless, this must be replaced with a real queue.
-- (−) No retry / DLQ / task monitoring. The `collection.py` task catches exceptions and updates `error_message`, but there is no visibility into task state.
+**Status:** Accepted (with caveat). Revisit at 50k tasks/day or Q3 2026, whichever comes first.
+**Context:** VigilaGraph runs document collection (`run_collection`), AI analysis (`run_analysis`), and graph generation (`graph_service.generate` — as a 1-hour subprocess) as background work. The original Celery design was dropped in favour of in-process `asyncio.create_task` to ship the MVP. Volume is currently low (a few hundred tasks/day at most).
+**Decision:** Keep `asyncio.create_task` as the background runtime, wrapped by `app.tasks.safe.safe_background_task`. The wrapper:
+- Binds a structlog `task` context so every log line is correlatable.
+- Catches **all** exceptions and logs them with the full traceback (the request handler has already returned by then, so the user is not affected).
+- Forwards args by position/keyword only — the function signature must be picklable so a future migration to BullMQ does not require code changes.
 
-**Revisit if:** task loss becomes a real problem, or if we move to a serverless deployment.
+State persistence is the safety net for the in-process model: `CollectionRun`, `GraphRun`, and `AnalysisRun` rows carry the run state in the database. If a task fails, the row is updated with `error_message`. A periodic janitor (out of scope for this ADR; tracked as a follow-up) can re-enqueue any row stuck in `running` for more than N minutes.
+
+**Consequences:**
+- (+) Zero new infrastructure. One process, one Dockerfile, one `startCommand`. Fits the current single-tenant deploy on Railway.
+- (+) All errors are caught and logged; the user is never broken by a background failure.
+- (+) Task arguments are picklable → drop-in migration to BullMQ later.
+- (−) In-flight work is lost on process restart. Mitigated by run-state rows (a janitor can re-enqueue stuck rows).
+- (−) No retry / DLQ. The current `run_collection` retries internally on a per-connector basis; there is no outer retry. Add BullMQ's `max_retries` later.
+- (−) No real-time task monitoring. The audit log + structlog are the only signals.
+
+**Migration to BullMQ (planned, not scheduled):**
+The Redis that backs the app today (cache + future broker) can also host BullMQ. The migration is mechanical: convert `safe_background_task(coro_fn, *args, **kwargs)` into a BullMQ `enqueue(coro_fn, *args, **kwargs)`, run a separate `bullmq-worker` process, add `max_retries` and `backoff`. The function bodies (run_collection, run_analysis) do not change. Estimated effort: 1–2 weeks, including the worker deployment on Railway and a 7-day canary on 10% of traffic.
+
+**Revisit if:** task volume crosses 50k/day, task loss becomes a real (not theoretical) problem, or we target a serverless deployment.
+
 
 ### ADR-002: SQLAlchemy 2.0 + asyncpg
 

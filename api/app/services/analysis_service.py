@@ -58,7 +58,17 @@ class AnalysisService:
 
         topic = request.topic or project.topic or project.name
 
-        asyncio.create_task(run_analysis(self.db, str(project_id), topic))
+        # Enqueue the analysis runner. In-process (asyncio.create_task)
+        # for now; see ADR-001 in docs/ARCHITECTURE.md for the planned
+        # migration to BullMQ on Redis.
+        from app.tasks.safe import safe_background_task
+        safe_background_task(
+            run_analysis,
+            self.db,
+            str(project_id),
+            topic,
+            task_name="run_analysis",
+        )
 
         logger.info("analysis_dispatched", project_id=str(project_id))
         return AnalysisRunResponse(message="Análisis iniciado", status="running")
