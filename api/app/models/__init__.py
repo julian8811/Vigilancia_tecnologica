@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-from app.models.enums import SourceName
-from app.models.organization import Organization
-from app.models.user import User
-from app.models.project import SurveillanceProject
-from app.models.search_strategy import SearchStrategy
-from app.models.document import Document, DocumentChunk
-from app.models.graph import GraphRun, GraphNode, GraphEdge
-from app.models.analysis import Technology, Trend, Actor, Opportunity
-from app.models.report import Report
+from app.models.analysis import Actor, Opportunity, Technology, Trend
+from app.models.audit_log import AuditLog
 from app.models.collection_run import CollectionRun
+from app.models.document import Document, DocumentChunk
+from app.models.enums import SourceName
+from app.models.graph import GraphEdge, GraphNode, GraphRun
+from app.models.organization import Organization
+from app.models.project import SurveillanceProject
+from app.models.report import Report
+from app.models.search_strategy import SearchStrategy
+from app.models.user import User
 
 __all__ = [
     "SourceName",
@@ -30,4 +31,5 @@ __all__ = [
     "Opportunity",
     "Report",
     "CollectionRun",
+    "AuditLog",
 ]
