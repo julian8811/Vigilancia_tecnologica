@@ -54,11 +54,8 @@ Before exposing VigilaGraph to the public internet, ensure the following:
 The following issues are **known and unfixed** at the time of writing. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full audit:
 
 1. Default `JWT_SECRET` value is publicly known (mitigated by required-env check, see checklist above).
-2. JWT tokens stored in `localStorage` on the web client.
-3. No rate limit on login endpoint.
-4. No security headers middleware.
-5. E2E test suite references English copy that no longer exists — CI may be red.
-6. Pre-commit hook paths reference `apps/` instead of the current `api/` / `web/` paths.
+2. No rate limit on login endpoint.
+3. E2E test suite references English copy that no longer exists — CI may be red.
 
 ## Disclosure timeline
 
