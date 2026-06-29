@@ -84,6 +84,12 @@ async def test_register_sets_cookies(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_cookies_are_httponly_and_samesite_lax(client: AsyncClient):
+    """The JWT cookies (vg_access, vg_refresh) are HttpOnly + SameSite=Lax.
+
+    The CSRF cookie (vg_csrf) is intentionally NOT httpOnly so the
+    SPA can read it via document.cookie; it still has SameSite=Lax
+    and path=/. Both classes share path and samesite.
+    """
     resp = await client.post("/api/v1/auth/register", json={
         "email": "attrs@example.com",
         "name": "Attrs",
@@ -91,18 +97,26 @@ async def test_cookies_are_httponly_and_samesite_lax(client: AsyncClient):
         "organization_name": "Attrs Org",
     })
     assert resp.status_code == 201
-    # httpx parses Set-Cookie into resp.cookies; we re-extract raw
-    # headers to check attrs.
     set_cookie_headers = [
         v for k, v in resp.headers.raw
         if k == b"set-cookie"
     ]
     assert set_cookie_headers, "no Set-Cookie headers in response"
     for raw in set_cookie_headers:
-        attr = _cookie_attrs(raw.decode())
-        assert attr.get("httponly") == "", "cookie should be HttpOnly"
-        assert attr.get("samesite").lower() == "lax", "cookie should be SameSite=Lax"
-        assert attr.get("path") == "/", "cookie should be scoped to /"
+        line = raw.decode()
+        cookie_name = line.split(";", 1)[0].split("=", 1)[0].strip()
+        attr = _cookie_attrs(line)
+        # Every cookie is path=/, SameSite=Lax.
+        assert attr.get("path") == "/", f"{cookie_name} should be scoped to /"
+        assert attr.get("samesite", "").lower() == "lax", \
+            f"{cookie_name} should be SameSite=Lax"
+        # The JWT cookies are HttpOnly; the CSRF cookie is not.
+        if cookie_name in ("vg_access", "vg_refresh"):
+            assert attr.get("httponly") == "", \
+                f"{cookie_name} should be HttpOnly"
+        elif cookie_name == "vg_csrf":
+            assert "httponly" not in attr, \
+                f"vg_csrf must be JS-readable; got {attr}"
 
 
 # ── Auth via cookies (no Authorization header) ────────────────────────
@@ -168,7 +182,14 @@ async def test_logout_clears_cookies(client: AsyncClient):
         "organization_name": "Logout Org",
     })
     assert "vg_access" in client.cookies
-    resp = await client.post("/api/v1/auth/logout")
+    # /logout is a mutating request, so the SPA (and this test)
+    # must echo the CSRF token in the X-CSRF-Token header.
+    csrf = client.cookies.get("vg_csrf")
+    assert csrf
+    resp = await client.post(
+        "/api/v1/auth/logout",
+        headers={"X-CSRF-Token": csrf},
+    )
     assert resp.status_code == 200
     # The server sets Max-Age=0; httpx's cookie jar is updated.
     # (When Max-Age=0, httpx deletes the cookie from the jar.)

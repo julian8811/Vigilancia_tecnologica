@@ -30,17 +30,20 @@ class ChangePasswordRequest(BaseModel):
 
 
 class SessionResponse(BaseModel):
-    """Response for login, register, and refresh.
+    """Response for login, register, refresh, and /auth/me.
 
     The JWT itself is **not** in the body — it travels in an
-    httpOnly cookie set by the response. The body only carries the
-    user profile so the client can render the post-login UI without
-    needing to parse a Set-Cookie header.
+    httpOnly cookie set by the response. The body carries the user
+    profile plus the current CSRF token (when known) so the SPA
+    can populate its first ``X-CSRF-Token`` header on a fresh
+    client. The body is informational; the cookie is the source of
+    truth.
     """
 
     model_config = ConfigDict(from_attributes=True)
 
     user: UserResponse
+    csrf_token: str | None = None
 
 
 class LogoutResponse(BaseModel):

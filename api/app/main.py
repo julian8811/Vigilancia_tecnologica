@@ -15,6 +15,7 @@ from structlog import get_logger
 
 from app.api.v1.router import router as v1_router
 from app.core.config import settings
+from app.core.csrf import CSRFMiddleware
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIDMiddleware, SecurityHeadersMiddleware
@@ -65,8 +66,12 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "X-CSRF-Token"],
 )
+# CSRF double-submit: mounted AFTER CORS so the 403 response carries
+# the same Access-Control-* headers as any other API error. See
+# app.core.csrf for the full contract.
+app.add_middleware(CSRFMiddleware)
 
 # ── Error handlers ────────────────────────────────────────────────
 register_error_handlers(app)
