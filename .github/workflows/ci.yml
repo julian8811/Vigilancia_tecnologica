@@ -13,7 +13,7 @@ jobs:
       run:
         working-directory: api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
@@ -38,7 +38,7 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
@@ -58,7 +58,7 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
