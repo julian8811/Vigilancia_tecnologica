@@ -35,14 +35,23 @@ export function useUploadDocument() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("project_id", projectId);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/api/v1/projects/${projectId}/documents/upload`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      });
+      // Bypass the typed `api` wrapper here: we need to send
+      // multipart/form-data without setting Content-Type (the
+      // browser fills it in with the correct boundary) and without
+      // the JSON content-type default the wrapper would add.
+      const res = await fetch(
+        `${API_URL}/api/v1/projects/${projectId}/documents/upload`,
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        },
+      );
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
+        const err = (await res.json().catch(() => ({}))) as {
+          detail?: string;
+          error?: string;
+        };
         throw new Error(err.detail || err.error || "Upload failed");
       }
       return res.json() as Promise<Document>;

@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { api, setAuthToken, setOnUnauthorized } from "@/lib/api";
+import { api, setOnUnauthorized } from "@/lib/api";
 import type { User } from "@/types/api";
 
 interface AuthContextType {
@@ -23,8 +23,8 @@ interface AuthContextType {
     name: string;
     organization_name?: string;
   }) => Promise<void>;
-  logout: () => void;
-  token: string | null;
+  logout: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -33,14 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState<string | null>(null);
 
   const clearSession = useCallback(
     (reason: "manual" | "expired" = "manual") => {
-      localStorage.removeItem("token");
-      setAuthToken(null);
-      setOnUnauthorized(null);
-      setToken(null);
       setUser(null);
       if (reason === "expired") {
         toast.error("Tu sesión expiró. Volvé a iniciar sesión.");
@@ -50,41 +45,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [router],
   );
 
-  // Register the 401 interceptor. Runs once on mount; cleared when
-  // the session is cleared or the component unmounts.
   useEffect(() => {
     setOnUnauthorized(() => clearSession("expired"));
     return () => setOnUnauthorized(null);
   }, [clearSession]);
 
-  // Bootstrap: read token from localStorage and validate it.
   useEffect(() => {
-    const t = localStorage.getItem("token");
-    if (t) {
-      setToken(t);
-      setAuthToken(t);
-      api
-        .get<User>("/auth/me")
-        .then((u) => setUser(u))
-        .catch(() => clearSession("expired"))
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
+    let cancelled = false;
+    async function bootstrap() {
+      try {
+        const me = await api.get<User>("/auth/me");
+        if (!cancelled) setUser(me);
+      } catch {
+        try {
+          const refreshed = await api.post<{ user: User }>("/auth/refresh");
+          if (!cancelled) setUser(refreshed.user);
+        } catch {
+          // anonymous
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-  }, [clearSession]);
+    void bootstrap();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const data = await api.post<{ access_token: string; token_type: string }>(
-      "/auth/login",
-      { email, password },
-    );
-
-    localStorage.setItem("token", data.access_token);
-    setAuthToken(data.access_token);
-    setToken(data.access_token);
-
-    const me = await api.get<User>("/auth/me");
-    setUser(me);
+    const data = await api.post<{ user: User }>("/auth/login", { email, password });
+    setUser(data.user);
   }, []);
 
   const register = useCallback(
@@ -99,12 +90,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // best-effort
+    }
     clearSession("manual");
   }, [clearSession]);
 
+  const refresh = useCallback(async () => {
+    const data = await api.post<{ user: User }>("/auth/refresh");
+    setUser(data.user);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, token }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, register, logout, refresh }}
+    >
       {children}
     </AuthContext.Provider>
   );
