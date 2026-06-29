@@ -230,9 +230,16 @@ class ProjectService:
             await self.db.flush()
             await self.db.refresh(collection_run)
 
-            # Enqueue the collection runner (in-process, no Celery)
-            import asyncio as _asyncio
-            _asyncio.create_task(run_collection(self.db, str(collection_run.id)))
+            # Enqueue the collection runner. In-process (asyncio.create_task)
+            # for now; see ADR-001 in docs/ARCHITECTURE.md for the planned
+            # migration to BullMQ on Redis.
+            from app.tasks.safe import safe_background_task
+            safe_background_task(
+                run_collection,
+                self.db,
+                str(collection_run.id),
+                task_name="run_collection",
+            )
 
             logger.info(
                 "collection_triggered",
