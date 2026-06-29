@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
+from app.core.permissions import assign_role_on_register
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
 from app.repositories.organization_repository import OrganizationRepository
@@ -30,9 +31,12 @@ class AuthService:
 
         Flow:
           1. Check email uniqueness
-          2. Create organisation (use provided slug or auto-generate)
+          2. Create or join organisation
           3. Hash the password
-          4. Create the user with role ``owner``
+          4. Create the user with a role assigned by
+             ``assign_role_on_register``:
+               - owner of a new org -> "owner"
+               - joining an existing org -> "viewer" (read-only by default)
           5. Issue a JWT
           6. Return ``TokenResponse``
         """
@@ -43,6 +47,7 @@ class AuthService:
             raise HTTPException(status_code=409, detail="Este correo ya está registrado")
 
         # 2. Create or resolve organisation
+        creating_new_org = request.organization_slug is None
         if request.organization_slug:
             org = await self.org_repo.get_by_slug(request.organization_slug)
             if org is None:
@@ -60,17 +65,25 @@ class AuthService:
         # 3. Hash password
         password_hash = hash_password(request.password)
 
-        # 4. Create user directly (schema maps password → password_hash)
+        # 4. Create user with the role determined by join-vs-create.
+        role = assign_role_on_register(creating_new_org=creating_new_org)
         user = User(
             email=request.email,
             name=request.name,
             password_hash=password_hash,
             organization_id=org.id,
+            role=role,
         )
         self.db.add(user)
         await self.db.flush()
         await self.db.refresh(user)
-        logger.info("user_created", user_id=user.id, email=user.email)
+        logger.info(
+            "user_created",
+            user_id=user.id,
+            email=user.email,
+            role=role,
+            created_new_org=creating_new_org,
+        )
 
         # 5. Issue JWT
         token = create_access_token(subject=str(user.id))
