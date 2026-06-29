@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
+from app.core.permissions import assign_role_on_register
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
 from app.repositories.organization_repository import OrganizationRepository
@@ -13,7 +14,7 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.auth import ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.organization import OrganizationCreate
 from app.schemas.user import UserResponse
-from app.services.audit_service import AuditContext, AuditEvent, AuditService
+from app.services.audit_service import AuditContext, AuditService
 
 logger = get_logger(__name__)
 
@@ -25,29 +26,16 @@ class AuthService:
         self.db = db
         self.user_repo = UserRepository(db)
         self.org_repo = OrganizationRepository(db)
-        # Audit log writes use their own session so they persist even
-        # when the business transaction rolls back (e.g. login_failed
-        # raises HTTPException, the parent tx rolls back, but the
-        # login_failed audit row should still be recorded).
         self.audit = AuditService(db)
         self.audit_context = audit_context or AuditContext()
 
     async def register(self, request: RegisterRequest) -> TokenResponse:
-        """Create a new user account.
-
-        Flow:
-          1. Check email uniqueness
-          2. Create organisation (use provided slug or auto-generate)
-          3. Hash the password
-          4. Create the user with role ``owner``
-          5. Issue a JWT
-          6. Return ``TokenResponse``
-        """
+        """Create a new user account."""
         # 1. Check email uniqueness
         existing = await self.user_repo.get_by_email(request.email)
         if existing:
             await self.audit.record(
-                AuditEvent.REGISTER_FAILED,
+                "register_failed",
                 context=self.audit_context,
                 metadata={"email": request.email, "reason": "email_taken"},
             )
@@ -55,65 +43,62 @@ class AuthService:
             raise HTTPException(status_code=409, detail="Este correo ya está registrado")
 
         # 2. Create or resolve organisation
-        try:
-            if request.organization_slug:
-                org = await self.org_repo.get_by_slug(request.organization_slug)
-                if org is None:
-                    await self.audit.record(
-                        AuditEvent.REGISTER_FAILED,
-                        context=self.audit_context,
-                        metadata={
-                            "email": request.email,
-                            "reason": "unknown_organization_slug",
-                            "slug": request.organization_slug,
-                        },
-                    )
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Organización '{request.organization_slug}' no encontrada",
-                    )
-            else:
-                base_slug = self.org_repo.slugify(request.name)
-                slug = await self._ensure_unique_slug(base_slug)
-                org_schema = OrganizationCreate(
-                    name=f"{request.name}'s Organization",
-                    slug=slug,
+        creating_new_org = request.organization_slug is None
+        if request.organization_slug:
+            org = await self.org_repo.get_by_slug(request.organization_slug)
+            if org is None:
+                await self.audit.record(
+                    "register_failed",
+                    context=self.audit_context,
+                    metadata={
+                        "email": request.email,
+                        "reason": "unknown_organization_slug",
+                        "slug": request.organization_slug,
+                    },
                 )
-                org = await self.org_repo.create(org_schema)
-                logger.info("org_created", org_id=org.id, slug=org.slug)
-        except HTTPException:
-            raise
-        except Exception as exc:
-            await self.audit.record(
-                AuditEvent.REGISTER_FAILED,
-                context=self.audit_context,
-                metadata={"email": request.email, "reason": "org_creation_error", "error": str(exc)},
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Organización '{request.organization_slug}' no encontrada",
+                )
+        else:
+            base_slug = self.org_repo.slugify(request.name)
+            slug = await self._ensure_unique_slug(base_slug)
+            org_schema = OrganizationCreate(
+                name=f"{request.name}'s Organization",
+                slug=slug,
             )
-            raise
+            org = await self.org_repo.create(org_schema)
+            logger.info("org_created", org_id=org.id, slug=org.slug)
 
         # 3. Hash password
         password_hash = hash_password(request.password)
 
-        # 4. Create user directly (schema maps password → password_hash)
+        # 4. Create user with the role determined by join-vs-create.
+        role = assign_role_on_register(creating_new_org=creating_new_org)
         user = User(
             email=request.email,
             name=request.name,
             password_hash=password_hash,
             organization_id=org.id,
+            role=role,
         )
         self.db.add(user)
         await self.db.flush()
         await self.db.refresh(user)
-        logger.info("user_created", user_id=user.id, email=user.email)
+        logger.info(
+            "user_created",
+            user_id=user.id,
+            email=user.email,
+            role=role,
+            created_new_org=creating_new_org,
+        )
 
         # 5. Issue JWT
         token = create_access_token(subject=str(user.id))
 
-        # 6. Audit (success). Recorded AFTER the user is committed in
-        # memory so the row carries the new actor_id. The audit service
-        # shares the session, so the row commits with the user.
+        # 6. Audit (success).
         await self.audit.record(
-            AuditEvent.REGISTER,
+            "register",
             context=AuditContext(
                 actor_id=user.id,
                 organization_id=org.id,
@@ -133,7 +118,7 @@ class AuthService:
         user = await self.user_repo.get_by_email(request.email)
         if user is None:
             await self.audit.record(
-                AuditEvent.LOGIN_FAILED,
+                "login_failed",
                 context=self.audit_context,
                 metadata={"email": request.email, "reason": "unknown_email"},
             )
@@ -142,7 +127,7 @@ class AuthService:
 
         if not user.is_active:
             await self.audit.record(
-                AuditEvent.LOGIN_FAILED,
+                "login_failed",
                 context=AuditContext(
                     actor_id=user.id,
                     organization_id=user.organization_id,
@@ -157,7 +142,7 @@ class AuthService:
 
         if not verify_password(request.password, user.password_hash):
             await self.audit.record(
-                AuditEvent.LOGIN_FAILED,
+                "login_failed",
                 context=AuditContext(
                     actor_id=user.id,
                     organization_id=user.organization_id,
@@ -174,7 +159,7 @@ class AuthService:
         logger.info("login_success", user_id=user.id, email=user.email)
 
         await self.audit.record(
-            AuditEvent.LOGIN_SUCCESS,
+            "login_success",
             context=AuditContext(
                 actor_id=user.id,
                 organization_id=user.organization_id,
@@ -192,7 +177,7 @@ class AuthService:
         """Verify the current password and set a new one."""
         if not verify_password(request.old_password, user.password_hash):
             await self.audit.record(
-                AuditEvent.PASSWORD_CHANGE_FAILED,
+                "password_change_failed",
                 context=self.audit_context,
                 metadata={"reason": "wrong_old_password"},
             )
@@ -201,12 +186,10 @@ class AuthService:
 
         user.password_hash = hash_password(request.new_password)
         await self.db.flush()
-        await self.audit.record(AuditEvent.PASSWORD_CHANGE, context=self.audit_context)
+        await self.audit.record("password_change", context=self.audit_context)
         logger.info("password_changed", user_id=user.id)
 
     async def _ensure_unique_slug(self, base_slug: str) -> str:
-        """Return *base_slug* if available, otherwise append ``-1``,
-        ``-2``, etc."""
         slug = base_slug
         counter = 1
         while await self.org_repo.slug_exists(slug):

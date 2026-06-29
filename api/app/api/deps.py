@@ -10,11 +10,13 @@ from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
+from app.core.permissions import has_role_at_least
 from app.core.security import decode_access_token
 from app.db.session import async_session_factory
 from app.models.user import User
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
+from app.services.audit_service import AuditContext
 
 logger = get_logger(__name__)
 
@@ -79,10 +81,12 @@ async def get_current_active_user(
 ) -> User:
     """Require the authenticated user to be active.
 
-    Raises ``400 BAD REQUEST`` when the account is deactivated.
+    Raises ``403 FORBIDDEN`` when the account is deactivated. (Was
+    400 before S11; the spec says "account disabled" is a permission
+    state, not a malformed request.)
     """
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Usuario inactivo")
+        raise HTTPException(status_code=403, detail="Cuenta desactivada")
     return current_user
 
 
@@ -177,3 +181,31 @@ async def get_audit_context(
         user_agent=request.headers.get("user-agent"),
         request_id=getattr(request.state, "request_id", None),
     )
+
+
+def require_min_role(min_role: str):
+    """Factory that returns a dependency enforcing a minimum role level.
+
+    Unlike ``require_roles`` (which is an exact-membership check), this
+    uses the role hierarchy so callers can ask for the lowest
+    acceptable role and ``owner`` automatically passes.
+
+    ``is_superuser=True`` always passes.
+
+    Usage::
+
+        @router.post("/projects")
+        async def create_project(
+            current_user: User = Depends(require_min_role(Role.ANALYST)),
+        ): ...
+    """
+
+    async def _checker(current_user: User = Depends(get_current_active_user)) -> User:
+        if not has_role_at_least(current_user, min_role):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Requiere rol mínimo: {min_role}",
+            )
+        return current_user
+
+    return _checker
