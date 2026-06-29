@@ -31,6 +31,8 @@ from app.schemas.analysis import (
 )
 from app.services.analysis_service import AnalysisService
 
+_require_analyst = require_min_role(Role.ANALYST)
+
 logger = get_logger(__name__)
 router = APIRouter(prefix="/projects/{project_id}", tags=["análisis"])
 

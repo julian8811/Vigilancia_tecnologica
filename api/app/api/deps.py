@@ -16,7 +16,6 @@ from app.db.session import async_session_factory
 from app.models.user import User
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
-from app.services.audit_service import AuditContext
 
 logger = get_logger(__name__)
 
