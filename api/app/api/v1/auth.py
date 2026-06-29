@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
 from app.api.deps import get_current_active_user, get_db
+from app.main import limiter
 from app.models.user import User
 from app.schemas.auth import ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.user import UserResponse
@@ -17,17 +18,37 @@ router = APIRouter(prefix="/auth", tags=["autenticación"])
 
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
-async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
-    """Register a new user account."""
+@limiter.limit("5/minute")
+async def register(
+    request: Request,
+    body: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Register a new user account.
+
+    Rate-limited to 5 attempts per minute per client IP. The auth_service
+    also logs every attempt with the email for downstream brute-force
+    detection (see auth_service.login / register).
+    """
     service = AuthService(db)
-    return await service.register(request)
+    return await service.register(body)
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
-    """Authenticate and return a JWT."""
+@limiter.limit("5/minute")
+async def login(
+    request: Request,
+    body: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Authenticate and return a JWT.
+
+    Rate-limited to 5 attempts per minute per client IP. Repeated failures
+    are logged with the attempted email and source IP — alert on this in
+    production.
+    """
     service = AuthService(db)
-    return await service.login(request)
+    return await service.login(body)
 
 
 @router.get("/me", response_model=UserResponse)
