@@ -1,0 +1,93 @@
+name: Bug report
+description: Report a bug or unexpected behaviour
+title: "[bug] "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please fill in the template below so we can reproduce and fix it.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How bad is the impact?
+      options:
+        - Critical (data loss, security, blocks all users)
+        - High (blocks a feature for many users)
+        - Medium (blocks a feature for some users)
+        - Low (cosmetic, edge case, workaround exists)
+    validations:
+      required: true
+
+  - type: input
+    id: component
+    attributes:
+      label: Affected component
+      description: Which part of the system?
+      placeholder: "e.g. API auth, web dashboard, graph visualization"
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One-paragraph description of the issue.
+      placeholder: "When I click 'Generate graph' on a project with 50 documents, the request hangs and never returns."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps that trigger the bug.
+      placeholder: |
+        1. Go to ...
+        2. Click on ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What actually happened? Include error messages, screenshots, network traces if available.
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: Where is this happening?
+      placeholder: "Local docker compose / Railway staging / production / commit SHA"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser (if web)
+      options:
+        - Chrome
+        - Firefox
+        - Safari
+        - Edge
+        - Other
+        - N/A
+    validations:
+      required: false

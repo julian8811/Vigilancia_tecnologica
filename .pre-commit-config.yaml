@@ -11,19 +11,19 @@ repos:
     hooks:
       - id: mypy-api
         name: mypy (API)
-        entry: bash -c 'cd apps/api && uv run mypy app/ --ignore-missing-imports'
+        entry: bash -c 'cd api && uv run mypy app/ --ignore-missing-imports'
         language: system
         files: ^api/
         pass_filenames: false
       - id: tsc
         name: TypeScript check
-        entry: bash -c 'cd apps/web && npx tsc --noEmit'
+        entry: bash -c 'cd web && bunx tsc --noEmit'
         language: system
         files: ^web/
         pass_filenames: false
       - id: vitest
         name: Frontend tests
-        entry: bash -c 'cd apps/web && npx vitest run'
+        entry: bash -c 'cd web && bunx vitest run'
         language: system
         files: ^web/
         pass_filenames: false

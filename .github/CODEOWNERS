@@ -1,0 +1,25 @@
+# Default owners for everything in this repo.
+# Adjust `julian8811` to your GitHub username or team handle.
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+* @julian8811
+
+# Critical areas need at least one owner review
+/api/app/core/security.py    @julian8811
+/api/app/core/config.py      @julian8811
+/api/app/api/v1/auth.py      @julian8811
+/api/app/services/           @julian8811
+/api/app/models/             @julian8811
+/api/alembic/versions/       @julian8811
+
+/web/hooks/                  @julian8811
+/web/lib/api.ts              @julian8811
+/web/app/login/              @julian8811
+/web/app/projects/           @julian8811
+
+/.github/                    @julian8811
+/docker-compose.yml          @julian8811
+/nixpacks.toml               @julian8811
+/railway.json                @julian8811
+/fly.toml                    @julian8811
+/render.yaml                 @julian8811
