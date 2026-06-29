@@ -12,37 +12,26 @@ from app.db.session import async_session_factory
 from app.models.user import User
 
 
-async def _promote_to_superuser(email: str) -> dict[str, str]:
-    """Promote a registered user to is_superuser=True and return their
-    Bearer auth headers. Use in tests that need to call /admin/*.
-    """
-    async with async_session_factory() as session:
-        result = await session.execute(select(User).where(User.email == email))
-        user = result.scalar_one()
-        user.is_superuser = True
-        await session.commit()
-
-    # Re-login so the JWT reflects the new is_superuser flag.
-    return {"Authorization": f"Bearer {_login_token(email)}"}
-
-
-def _login_token(email: str) -> str:
-    """Best-effort: read the latest login token for this email. We
-    rely on the test having just registered/logged-in the user, so the
-    token is in the response. Tests should call this only after a
-    successful login.
-    """
-    # The fixture uses random emails; tests pass the token in directly.
-    raise RuntimeError("Use _login_and_promote() instead of _login_token().")
-
-
 async def _login_and_promote(client: AsyncClient, email: str, password: str) -> dict[str, str]:
-    """Log in as a user, promote them to superuser, and return headers."""
+    """Log in as a user, promote them to superuser, and return headers.
+
+    The auth endpoint delivers the access token via the httpOnly
+    ``vg_access`` cookie (NOT in the response body — the body only
+    carries the user profile). We read the token from
+    ``resp.cookies`` so the next request can use the
+    ``Authorization: Bearer <token>`` header.
+
+    The promotion happens in the DB AFTER login. The next request
+    re-reads the user from the DB inside ``require_superuser`` and
+    sees ``is_superuser=True`` — the JWT itself does not need to be
+    re-issued.
+    """
     resp = await client.post(
         "/api/v1/auth/login", json={"email": email, "password": password},
     )
     assert resp.status_code == 200, resp.text
-    token = resp.json()["access_token"]
+    token = resp.cookies.get("vg_access")
+    assert token, "vg_access cookie missing from login response"
 
     async with async_session_factory() as session:
         result = await session.execute(select(User).where(User.email == email))
@@ -54,7 +43,6 @@ async def _login_and_promote(client: AsyncClient, email: str, password: str) -> 
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="known: body-token assumption in helper")
 async def test_register_records_audit_event(client: AsyncClient):
     """A successful registration appends a 'register' row to audit_log."""
     resp = await client.post("/api/v1/auth/register", json={
@@ -86,7 +74,6 @@ async def test_register_records_audit_event(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="known: body-token assumption in helper")
 async def test_login_success_records_audit_event(client: AsyncClient):
     """A successful login appends a 'login_success' row to audit_log."""
     await client.post("/api/v1/auth/register", json={
@@ -132,7 +119,6 @@ async def test_admin_audit_log_unauthenticated(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="known: body-token assumption in helper")
 async def test_admin_audit_log_pagination(client: AsyncClient):
     """The endpoint paginates and reports total + total_pages."""
     # Register three users to produce three register audit rows.
