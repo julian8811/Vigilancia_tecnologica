@@ -49,13 +49,6 @@ async def _set_role(client: AsyncClient, user_id: str, role: str) -> None:
         await session.commit()
 
 
-async def _get_user_id_from_token(client: AsyncClient, token: str) -> str:
-    """Resolve a JWT to its user_id by hitting /auth/me."""
-    resp = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
-    assert resp.status_code == 200, resp.text
-    return resp.json()["id"]
-
-
 # ── Default role on register ────────────────────────────────────────────
 
 
@@ -100,16 +93,10 @@ async def test_register_join_existing_org_assigns_viewer_role(client: AsyncClien
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="known issue: cookie bridging + multiple users in conftest")
 async def test_viewer_cannot_create_project(client: AsyncClient):
     """A viewer (joined existing org) gets 403 on POST /projects."""
     # Founder creates the org.
     founder = await _register(client, email="rbac-f1@example.com")
-    founder_id = await _get_user_id_from_token(client, founder["headers"]["Authorization"])
-    org_id_resp = await client.get(
-        "/api/v1/auth/me", headers=founder["headers"],
-    )
-    org_slug = (await async_session_factory().__aenter__()) if False else None  # noqa
     async with async_session_factory() as session:
         from app.models.organization import Organization
         org = (await session.execute(
@@ -165,7 +152,6 @@ async def test_analyst_can_create_project(client: AsyncClient, auth_headers):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="known issue: cookie bridging + multiple users in conftest")
 async def test_viewer_cannot_delete_project(client: AsyncClient):
     """A viewer cannot DELETE /projects/{id}; gets 403."""
     # Founder creates a project.
@@ -185,8 +171,7 @@ async def test_viewer_cannot_delete_project(client: AsyncClient):
     org_id = founder["user"]["organization_id"]
 
     # Demote the founder to viewer (simulate another user with viewer role).
-    founder_id = await _get_user_id_from_token(client, founder["headers"]["Authorization"])
-    await _set_role(client, founder_id, "viewer")
+    await _set_role(client, founder["user"]["id"], "viewer")
 
     # Founder (now viewer) tries to delete.
     resp = await client.delete(
@@ -255,7 +240,6 @@ async def test_superuser_bypasses_role_check(client: AsyncClient, auth_headers):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="known issue: cookie bridging + multiple users in conftest")
 async def test_owner_can_promote_viewer_to_analyst(client: AsyncClient):
     """An owner can change another member's role in the same org."""
     owner = await _register(client, email="rbac-owner@example.com")
@@ -291,7 +275,6 @@ async def test_owner_can_promote_viewer_to_analyst(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="known issue: cookie bridging + multiple users in conftest")
 async def test_analyst_cannot_grant_admin_role(client: AsyncClient):
     """Privilege ceiling: an analyst cannot create a new admin."""
     owner = await _register(client, email="rbac-privtest1@example.com")
@@ -314,8 +297,7 @@ async def test_analyst_cannot_grant_admin_role(client: AsyncClient):
     joiner_id = joiner.json()["user"]["id"]
 
     # Demote the owner to analyst.
-    owner_id = await _get_user_id_from_token(client, owner["headers"]["Authorization"])
-    await _set_role(client, owner_id, "analyst")
+    await _set_role(client, owner["user"]["id"], "analyst")
 
     # Analyst tries to promote joiner to admin — should fail.
     resp = await client.patch(
@@ -327,7 +309,6 @@ async def test_analyst_cannot_grant_admin_role(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="known issue: cookie bridging + multiple users in conftest")
 async def test_last_owner_cannot_be_demoted(client: AsyncClient):
     """Trying to demote the only owner returns 409."""
     owner = await _register(client, email="rbac-lastowner@example.com")
@@ -339,11 +320,9 @@ async def test_last_owner_cannot_be_demoted(client: AsyncClient):
             )
         )).scalar_one()
         org_slug = org.slug
-    owner_id = await _get_user_id_from_token(client, owner["headers"]["Authorization"])
-
     # Owner tries to demote themselves to admin (still the only owner).
     resp = await client.patch(
-        f"/api/v1/orgs/{org_slug}/members/{owner_id}",
+        f"/api/v1/orgs/{org_slug}/members/{owner['user']['id']}",
         json={"role": "admin"},
         headers=owner["headers"],
     )

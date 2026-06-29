@@ -151,21 +151,20 @@ async def test_project_status_transition(client: AsyncClient, auth_headers: dict
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="known: multi-user cookie bridge issue")
 async def test_project_org_boundary(client: AsyncClient):
     """Users from different orgs cannot see each other's projects."""
     import uuid
 
     # User A creates project
-    headers_a = await _register_user(client, "org-a@example.com", "OrgA")
+    user_a = await _register_user(client, "org-a@example.com", "OrgA")
     created = await client.post("/api/v1/projects", json={
         "name": "Secret A", "topic": "t", "surveillance_type": "technological", "language": "en",
-    }, headers=headers_a)
+    }, headers=user_a["headers"])
     pid = created.json()["id"]
 
     # User B cannot access it
-    headers_b = await _register_user(client, "org-b@example.com", "OrgB")
-    resp = await client.get(f"/api/v1/projects/{pid}", headers=headers_b)
+    user_b = await _register_user(client, "org-b@example.com", "OrgB")
+    resp = await client.get(f"/api/v1/projects/{pid}", headers=user_b["headers"])
     assert resp.status_code == 404, resp.text
 
 
