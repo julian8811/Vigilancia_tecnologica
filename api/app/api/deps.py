@@ -50,17 +50,35 @@ async def get_db() -> AsyncSession:
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    request: Request,
     db: AsyncSession = Depends(get_db),
+    token: str | None = Depends(oauth2_scheme),
 ) -> User:
-    """Decode the JWT from the ``Authorization`` header and return the
-    corresponding ``User`` ORM instance.
+    """Decode the JWT and return the corresponding ``User`` ORM instance.
 
-    Raises ``401 UNAUTHORIZED`` when the token is missing, invalid, or
-    the user no longer exists.
+    Accepts the token from either:
+
+    * The ``Authorization: Bearer ...`` header (for programmatic
+      clients, server-to-server, and tests).
+    * The ``vg_access`` cookie (set by ``/auth/login`` and
+      ``/auth/register``).
+
+    Raises ``401 UNAUTHORIZED`` when the token is missing, invalid,
+    or the user no longer exists.
     """
+    # Prefer the cookie so cookie-only clients (the web app) work
+    # without sending an Authorization header. Header takes
+    # precedence when present — that lets API clients use a Bearer
+    # token without the cookie round-trip.
+    from app.core.config import settings
+
+    cookie_token = request.cookies.get(settings.ACCESS_TOKEN_COOKIE)
+    raw_token = token or cookie_token
+    if not raw_token:
+        raise credentials_exception
+
     try:
-        payload = decode_access_token(token)
+        payload = decode_access_token(raw_token)
         user_id_str: str | None = payload.get("sub")
         if user_id_str is None:
             raise credentials_exception
