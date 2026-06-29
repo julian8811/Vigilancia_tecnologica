@@ -9,7 +9,14 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from app.api.deps import get_audit_context, get_current_active_user, get_db, verify_project_org
+from app.api.deps import (
+    get_audit_context,
+    get_current_active_user,
+    get_db,
+    require_min_role,
+    verify_project_org,
+)
+from app.core.permissions import Role
 from app.models.user import User
 from app.repositories.collection_run_repository import CollectionRunRepository
 from app.schemas.collection_run import CollectionRunListResponse
@@ -28,6 +35,13 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/projects", tags=["proyectos"])
 
 
+# Reusable dependencies: gate routes by minimum role. ``viewer`` is
+# implicit (any authenticated user passes via get_current_active_user),
+# so the named gates below start at ``analyst``.
+_require_analyst = require_min_role(Role.ANALYST)
+_require_admin = require_min_role(Role.ADMIN)
+
+
 def _build_list_response(items: list[ProjectResponse], total: int, page: int, page_size: int) -> ProjectListResponse:
     total_pages = max(1, (total + page_size - 1) // page_size)
     return ProjectListResponse(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
@@ -41,7 +55,7 @@ async def list_projects(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectListResponse:
-    """List projects for the current user's organisation."""
+    """List projects for the current user's organisation. Viewer+."""
     if current_user.organization_id is None:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     service = ProjectService(db)
@@ -53,11 +67,11 @@ async def list_projects(
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 async def create_project(
     data: ProjectCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     audit_context: AuditContext = Depends(get_audit_context),
 ) -> ProjectResponse:
-    """Create a new surveillance project."""
+    """Create a new surveillance project. Analyst+."""
     if current_user.organization_id is None:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     service = ProjectService(db, audit_context=audit_context)
@@ -71,7 +85,7 @@ async def get_project(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> ProjectResponse:
-    """Return a single project (org-bound)."""
+    """Return a single project (org-bound). Viewer+."""
     service = ProjectService(db)
     return await service.get_project(project_id, current_user.organization_id)
 
@@ -80,11 +94,11 @@ async def get_project(
 async def update_project(
     project_id: uuid.UUID,
     data: ProjectUpdate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> ProjectResponse:
-    """Update an existing project."""
+    """Update an existing project. Analyst+."""
     service = ProjectService(db)
     return await service.update_project(project_id, data, current_user.organization_id)
 
@@ -92,12 +106,12 @@ async def update_project(
 @router.delete("/{project_id}")
 async def delete_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_admin),
     db: AsyncSession = Depends(get_db),
     audit_context: AuditContext = Depends(get_audit_context),
     _: User = Depends(verify_project_org),
 ) -> dict:
-    """Hard-delete a project (org-bound)."""
+    """Hard-delete a project (org-bound, admin+)."""
     service = ProjectService(db, audit_context=audit_context)
     await service.delete_project(
         project_id, current_user.organization_id, user_id=current_user.id,
@@ -108,11 +122,11 @@ async def delete_project(
 @router.post("/{project_id}/duplicate", response_model=ProjectResponse)
 async def duplicate_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> ProjectResponse:
-    """Duplicate a project (without documents, graphs, or reports)."""
+    """Duplicate a project (without documents, graphs, or reports). Analyst+."""
     service = ProjectService(db)
     return await service.duplicate_project(project_id, current_user.organization_id, current_user.id)
 
@@ -120,11 +134,11 @@ async def duplicate_project(
 @router.post("/{project_id}/archive", response_model=ProjectResponse)
 async def archive_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> ProjectResponse:
-    """Archive a project (transition to ``archived`` status)."""
+    """Archive a project (transition to ``archived`` status). Analyst+."""
     service = ProjectService(db)
     return await service.archive_project(project_id, current_user.organization_id)
 
@@ -133,14 +147,11 @@ async def archive_project(
 async def transition_project_status(
     project_id: uuid.UUID,
     body: StatusTransitionRequest,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> ProjectResponse:
-    """Transition a project's status (validated by the status machine).
-
-    Reads ``status`` from the request JSON body.
-    """
+    """Transition a project's status. Analyst+."""
     service = ProjectService(db)
     return await service.transition_status(project_id, body.status, current_user.organization_id)
 
@@ -148,11 +159,11 @@ async def transition_project_status(
 @router.post("/{project_id}/collect", response_model=ProjectResponse)
 async def collect_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> ProjectResponse:
-    """Trigger document collection for a project (convenience shortcut)."""
+    """Trigger document collection for a project. Analyst+."""
     service = ProjectService(db)
     return await service.transition_status(project_id, "collecting", current_user.organization_id)
 
@@ -166,7 +177,7 @@ async def list_collection_runs(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> CollectionRunListResponse:
-    """Return paginated collection runs for a project (newest first)."""
+    """Return paginated collection runs. Viewer+."""
     repo = CollectionRunRepository(db)
     items, total = await repo.list_by_project(project_id, page=page, page_size=page_size)
     return CollectionRunListResponse(items=items, total=total)
@@ -179,7 +190,7 @@ async def get_search_strategy(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> SearchStrategyResponse | None:
-    """Return the search strategy for a project (or ``null``)."""
+    """Return the search strategy. Viewer+."""
     service = SearchStrategyService(db)
     return await service.get_strategy(project_id, current_user.organization_id)
 
@@ -188,11 +199,11 @@ async def get_search_strategy(
 async def update_search_strategy(
     project_id: uuid.UUID,
     data: SearchStrategyUpdate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> SearchStrategyResponse:
-    """Update (or create) the search strategy for a project."""
+    """Update (or create) the search strategy. Analyst+."""
     service = SearchStrategyService(db)
     return await service.update_strategy(project_id, data, current_user.organization_id)
 
@@ -200,11 +211,10 @@ async def update_search_strategy(
 @router.post("/{project_id}/search-strategy/generate", response_model=SearchStrategyResponse)
 async def generate_search_strategy(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> SearchStrategyResponse:
-    """Generate (MVP stub) or regenerate the search strategy from the
-    project topic.  Real AI-powered generation lands in Change 4."""
+    """Generate the search strategy. Analyst+."""
     service = SearchStrategyService(db)
     return await service.generate_strategy(project_id, current_user.organization_id)

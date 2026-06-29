@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from app.api.deps import get_current_active_user, get_db, verify_project_org
+from app.api.deps import get_current_active_user, get_db, require_min_role, verify_project_org
+from app.core.permissions import Role
 from app.core.storage import StorageService
 from app.models.user import User
 from app.schemas.document import (
@@ -24,6 +25,8 @@ from app.services.ai_service import classify_document_batch
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/projects/{project_id}/documents", tags=["documentos"])
+
+_require_analyst = require_min_role(Role.ANALYST)
 
 
 def _get_service(db: AsyncSession) -> DocumentService:
@@ -43,7 +46,7 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> DocumentListResponse:
-    """List documents for a project (scoped to the user's organisation)."""
+    """List documents. Viewer+."""
     service = _get_service(db)
     return await service.list_documents(
         project_id,
@@ -59,15 +62,11 @@ async def list_documents(
 async def upload_document_file(
     project_id: uuid.UUID,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> DocumentUploadResponse:
-    """Upload a PDF (or other supported document) to a project.
-
-    The file is validated, checksummed, deduplicated, stored in S3, and
-    (for PDFs) text-extracted automatically.
-    """
+    """Upload a PDF. Analyst+."""
     service = _get_service(db)
     return await service.upload_pdf(project_id, current_user.organization_id, file)
 
@@ -76,15 +75,11 @@ async def upload_document_file(
 async def add_url_document(
     project_id: uuid.UUID,
     body: AddUrlRequest,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> DocumentResponse:
-    """Add a URL as a document source for a project.
-
-    The URL is stored with ``processing_status='pending'``. Actual web
-    fetching is handled asynchronously.
-    """
+    """Add a URL as a document source. Analyst+."""
     service = _get_service(db)
     return await service.add_url(project_id, current_user.organization_id, body)
 
@@ -97,7 +92,7 @@ async def get_document(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> DocumentResponse:
-    """Return a single document (org-bound via its project)."""
+    """Return a single document. Viewer+."""
     service = _get_service(db)
     return await service.get_document(document_id, current_user.organization_id)
 
@@ -106,11 +101,11 @@ async def get_document(
 async def delete_document(
     project_id: uuid.UUID,
     document_id: uuid.UUID,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> dict:
-    """Delete a document, its S3 files, and its chunks."""
+    """Delete a document. Analyst+."""
     service = _get_service(db)
     await service.delete_document(document_id, current_user.organization_id)
     return {"detail": "Documento eliminado"}
@@ -120,11 +115,11 @@ async def delete_document(
 async def reprocess_document(
     project_id: uuid.UUID,
     document_id: uuid.UUID,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> DocumentResponse:
-    """Reset a document's processing status to ``pending`` for reprocessing."""
+    """Reset a document to ``pending``. Analyst+."""
     service = _get_service(db)
     return await service.reprocess_document(document_id, current_user.organization_id)
 
@@ -132,11 +127,11 @@ async def reprocess_document(
 @router.post("/classify")
 async def classify_documents_endpoint(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> dict:
-    """Auto-classify documents by type using AI analysis of abstracts."""
+    """Auto-classify documents by type. Analyst+."""
     result = await db.execute(
         select(Document)
         .where(Document.project_id == project_id)
