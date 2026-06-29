@@ -9,9 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from app.api.deps import get_current_active_user, get_db, verify_project_org
+from app.api.deps import get_audit_context, get_current_active_user, get_db, verify_project_org
 from app.models.user import User
 from app.schemas.report import ReportCreate, ReportListResponse, ReportResponse
+from app.services.audit_service import AuditContext
 from app.services.report_service import ReportService
 
 logger = get_logger(__name__)
@@ -42,10 +43,17 @@ async def create_report(
     request: ReportCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    audit_context: AuditContext = Depends(get_audit_context),
     _: User = Depends(verify_project_org),
 ) -> ReportResponse:
-    service = ReportService(db)
-    report = await service.generate(project_id, request.title, request.report_type)
+    service = ReportService(db, audit_context=audit_context)
+    report = await service.generate(
+        project_id,
+        request.title,
+        request.report_type,
+        user_id=current_user.id,
+        org_id=current_user.organization_id,
+    )
     return ReportResponse.model_validate(report)
 
 
@@ -70,10 +78,16 @@ async def regenerate_report(
     report_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    audit_context: AuditContext = Depends(get_audit_context),
     _: User = Depends(verify_project_org),
 ) -> ReportResponse:
-    service = ReportService(db)
-    report = await service.generate(project_id, report_id=report_id)
+    service = ReportService(db, audit_context=audit_context)
+    report = await service.generate(
+        project_id,
+        report_id=report_id,
+        user_id=current_user.id,
+        org_id=current_user.organization_id,
+    )
     return ReportResponse.model_validate(report)
 
 

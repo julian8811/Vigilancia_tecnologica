@@ -9,12 +9,13 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from app.api.deps import get_current_active_user, get_db, verify_project_org
+from app.api.deps import get_audit_context, get_current_active_user, get_db, verify_project_org
 from app.models.user import User
 from app.repositories.collection_run_repository import CollectionRunRepository
 from app.schemas.collection_run import CollectionRunListResponse
 from app.schemas.project import ProjectCreate, ProjectListResponse, ProjectResponse, ProjectUpdate
 from app.schemas.search_strategy import SearchStrategyResponse, SearchStrategyUpdate
+from app.services.audit_service import AuditContext
 from app.services.project_service import ProjectService
 from app.services.search_strategy_service import SearchStrategyService
 
@@ -54,11 +55,12 @@ async def create_project(
     data: ProjectCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    audit_context: AuditContext = Depends(get_audit_context),
 ) -> ProjectResponse:
     """Create a new surveillance project."""
     if current_user.organization_id is None:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
-    service = ProjectService(db)
+    service = ProjectService(db, audit_context=audit_context)
     return await service.create_project(data, current_user.organization_id, current_user.id)
 
 
@@ -92,11 +94,14 @@ async def delete_project(
     project_id: uuid.UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    audit_context: AuditContext = Depends(get_audit_context),
     _: User = Depends(verify_project_org),
 ) -> dict:
     """Hard-delete a project (org-bound)."""
-    service = ProjectService(db)
-    await service.delete_project(project_id, current_user.organization_id)
+    service = ProjectService(db, audit_context=audit_context)
+    await service.delete_project(
+        project_id, current_user.organization_id, user_id=current_user.id,
+    )
     return {"detail": "Proyecto eliminado"}
 
 
