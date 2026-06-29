@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +15,7 @@ from app.db.session import async_session_factory
 from app.models.user import User
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
+from app.services.audit_service import AuditContext
 
 logger = get_logger(__name__)
 
@@ -127,3 +128,53 @@ def require_roles(*roles: str):
         return current_user
 
     return _role_checker
+
+
+async def get_audit_context(
+    request: Request,
+    current_user: User | None = Depends(get_current_user_optional),
+) -> AuditContext:
+    """Build an AuditContext from the inbound request.
+
+    Use as a dependency on every endpoint that triggers an audit
+    event. The context is cheap to build (no DB calls) and is
+    safe to pass by reference into services.
+
+    The actor_id is None for unauthenticated requests (login page,
+    register page). The organization_id is the actor's org when
+    authenticated.
+    """
+    return AuditContext(
+        actor_id=current_user.id if current_user else None,
+        organization_id=current_user.organization_id if current_user else None,
+        ip=(request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_id=getattr(request.state, "request_id", None),
+    )
+
+
+async def get_current_user_optional(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """Like get_current_user but returns None instead of raising 401.
+
+    Use for endpoints that work both authenticated and anonymous
+    (login, register, health probes). The audit context uses this to
+    decide whether to record an actor_id.
+    """
+    auth_header = request.headers.get("authorization")
+    if not auth_header or not auth_header.lower().startswith("bearer "):
+        return None
+    token = auth_header.split(" ", 1)[1]
+    try:
+        payload = decode_access_token(token)
+        user_id_str: str | None = payload.get("sub")
+        if user_id_str is None:
+            return None
+        user_id = uuid.UUID(user_id_str)
+    except (JWTError, ValueError):
+        return None
+
+    repo = UserRepository(db)
+    return await repo.get(user_id)
