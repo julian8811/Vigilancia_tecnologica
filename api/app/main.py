@@ -17,6 +17,7 @@ from app.api.v1.router import router as v1_router
 from app.core.config import settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
+from app.core.middleware import RequestIDMiddleware, SecurityHeadersMiddleware
 from app.db.session import async_session_factory
 
 logger = get_logger(__name__)
@@ -54,6 +55,11 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 # ── Middleware ─────────────────────────────────────────────────────
+# Order matters: outermost middleware runs first. We want security
+# headers on every response, and request-ID stamped as the very first
+# thing so it appears on logs even from inside CORS preflight handling.
+app.add_middleware(SecurityHeadersMiddleware, hsts=True)
+app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,

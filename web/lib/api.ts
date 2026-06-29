@@ -2,8 +2,12 @@
  * Thin fetch wrapper with built-in auth token handling.
  *
  * Provides typed fetch interface for the API with automatic
- * auth token injection and form-data support.
+ * auth token injection, consistent error envelope handling, and a
+ * 401-interceptor hook so expired tokens trigger a clean logout
+ * rather than a silent failure.
  */
+
+import { toast } from "sonner";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -13,9 +17,9 @@ interface ApiOptions extends Omit<RequestInit, "headers" | "body"> {
   body?: unknown;
 }
 
-interface ApiError {
-  error: string;
-  status: number;
+interface ApiErrorBody {
+  detail?: string;
+  error?: string;
 }
 
 export class ApiClientError extends Error {
@@ -32,12 +36,35 @@ export class ApiClientError extends Error {
 
 let defaultToken: string | null = null;
 
+/** Callback invoked when any API call returns 401. */
+let onUnauthorized: (() => void) | null = null;
+
 export function setAuthToken(token: string | null) {
   defaultToken = token;
 }
 
 export function getAuthToken(): string | null {
   return defaultToken;
+}
+
+/**
+ * Register a handler to run whenever the API returns 401.
+ *
+ * The auth provider registers this on mount and uses it to clear
+ * local state and redirect to /login. The handler should be
+ * idempotent (called at most once per session in practice) and
+ * must not throw — it is invoked from inside the request() promise
+ * chain.
+ */
+export function setOnUnauthorized(handler: (() => void) | null) {
+  onUnauthorized = handler;
+}
+
+function readErrorDetail(body: ApiErrorBody, fallback: string): string {
+  // API uses {detail: "..."} (audit fix S14); keep {error: "..."} as
+  // a defensive fallback for any older endpoint that hasn't been
+  // migrated yet.
+  return body.detail || body.error || fallback;
 }
 
 async function request<T>(
@@ -75,10 +102,21 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({
-      error: "Unknown error",
-    }))) as ApiError;
-    throw new ApiClientError(response.status, body.error);
+    const errBody = (await response.json().catch(() => ({}))) as ApiErrorBody;
+    const detail = readErrorDetail(errBody, `Error ${response.status}`);
+
+    if (response.status === 401 && onUnauthorized) {
+      // Fire and forget — we still want to surface the original error
+      // to the caller, but the global handler will log the user out
+      // and redirect.
+      try {
+        onUnauthorized();
+      } catch (e) {
+        toast.error("Tu sesión expiró. Volvé a iniciar sesión.");
+      }
+    }
+
+    throw new ApiClientError(response.status, detail);
   }
 
   return response.json() as Promise<T>;
@@ -111,8 +149,16 @@ export const api = {
       headers,
     } as RequestInit);
     if (!response.ok) {
-      const body = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new ApiClientError(response.status, body.error || body.detail || "Request failed");
+      const errBody = (await response.json().catch(() => ({}))) as ApiErrorBody;
+      const detail = readErrorDetail(errBody, `Error ${response.status}`);
+      if (response.status === 401 && onUnauthorized) {
+        try {
+          onUnauthorized();
+        } catch (e) {
+          toast.error("Tu sesión expiró. Volvé a iniciar sesión.");
+        }
+      }
+      throw new ApiClientError(response.status, detail);
     }
     return response;
   },
