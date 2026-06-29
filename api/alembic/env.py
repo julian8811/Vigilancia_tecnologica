@@ -14,7 +14,7 @@ from app.db.base import Base
 
 # Import all models so Alembic can detect schema changes.
 # This import will expand as models are added.
-# import app.models          # noqa: F401
+import app.models  # noqa: F401, E402
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL_SYNC)

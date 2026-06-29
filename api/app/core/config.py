@@ -2,7 +2,20 @@
 
 from __future__ import annotations
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Weak values that must NEVER be accepted in production.
+_WEAK_JWT_SECRETS = frozenset(
+    {
+        "",
+        "change-me-to-a-long-random-string",
+        "test-secret",
+        "secret",
+        "changeme",
+    }
+)
+_ALLOWED_JWT_ALGORITHMS = frozenset({"HS256", "HS384", "HS512"})
 
 
 class Settings(BaseSettings):
@@ -25,6 +38,7 @@ class Settings(BaseSettings):
     DATABASE_URL_SYNC: str = "postgresql+psycopg2://vigilagraph:vigilagraph@localhost:5432/vigilagraph"
 
     # ── Auth / Security ──────────────────────────────────────────
+    # Default kept for local dev and tests; production startup MUST override.
     JWT_SECRET: str = "change-me-to-a-long-random-string"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_MINUTES: int = 1440  # 24 hours
@@ -51,7 +65,7 @@ class Settings(BaseSettings):
     STORAGE_LOCAL_PATH: str = "/tmp/vigilagraph-storage"
 
     # ── Logging ──────────────────────────────────────────────────
-    LOG_LEVEL: str = "DEBUG"
+    LOG_LEVEL: str = "INFO"
 
     # ── Derived properties ───────────────────────────────────────
 
@@ -69,6 +83,45 @@ class Settings(BaseSettings):
         if self.is_development:
             origins.extend(["http://localhost:3000", "http://localhost:5173"])
         return list(set(origins))
+
+    @model_validator(mode="after")
+    def _validate_production_secrets(self) -> "Settings":
+        """Refuse to boot in production with weak or default secrets.
+
+        These checks are intentionally strict: any failure here aborts the
+        process at import time, before the app can serve a single request.
+        """
+        if not self.is_production:
+            return self
+
+        errors: list[str] = []
+
+        if self.JWT_SECRET in _WEAK_JWT_SECRETS:
+            errors.append(
+                "JWT_SECRET is set to a known weak value. "
+                "Generate one with `openssl rand -hex 32` and set it in the env."
+            )
+        elif len(self.JWT_SECRET.encode("utf-8")) < 32:
+            errors.append(
+                f"JWT_SECRET must be at least 32 bytes (got {len(self.JWT_SECRET)})."
+            )
+
+        if self.JWT_ALGORITHM not in _ALLOWED_JWT_ALGORITHMS:
+            errors.append(
+                f"JWT_ALGORITHM must be one of {sorted(_ALLOWED_JWT_ALGORITHMS)} "
+                f"(got {self.JWT_ALGORITHM!r}). The 'none' algorithm is not allowed."
+            )
+
+        if self.S3_ACCESS_KEY in ("", "minioadmin") or self.S3_SECRET_KEY in ("", "minioadmin"):
+            errors.append(
+                "S3_ACCESS_KEY and S3_SECRET_KEY must be set to real values in production "
+                "(the minioadmin defaults are not safe)."
+            )
+
+        if errors:
+            raise ValueError("Refusing to start in production: " + " | ".join(errors))
+
+        return self
 
 
 settings = Settings()

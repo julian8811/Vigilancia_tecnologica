@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -57,8 +58,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 
 # ── Error handlers ────────────────────────────────────────────────
@@ -81,11 +82,20 @@ async def health() -> dict:
 
 
 @app.get("/ready")
-async def ready() -> dict:
-    """Readiness probe — checks DB connectivity and returns 200 if all dependencies are available."""
+async def ready() -> JSONResponse:
+    """Readiness probe — checks DB connectivity.
+
+    Returns 200 with {"status": "ok"} when all dependencies are reachable.
+    Returns 503 with {"status": "degraded", ...} when any check fails,
+    so load balancers and orchestrators route traffic away.
+    """
     try:
         async with async_session_factory() as session:
             await session.execute(text("SELECT 1"))
-        return {"status": "ok", "database": "conectado"}
     except Exception as exc:
-        return {"status": "degraded", "database": str(exc)}
+        logger.error("readiness_check_failed", error=str(exc))
+        return JSONResponse(
+            status_code=503,
+            content={"status": "degraded", "database": str(exc)},
+        )
+    return JSONResponse(status_code=200, content={"status": "ok", "database": "conectado"})
