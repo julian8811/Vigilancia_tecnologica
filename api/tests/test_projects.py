@@ -170,6 +170,7 @@ async def test_project_org_boundary(client: AsyncClient):
 
 
 async def _register_user(client: AsyncClient, email: str, org_name: str) -> dict[str, str]:
+<<<<<<< HEAD
     """Helper: register and return Authorization Bearer headers.
 
     Returns the user data plus the vg_access token wrapped as an
@@ -177,6 +178,20 @@ async def _register_user(client: AsyncClient, email: str, org_name: str) -> dict
     ``founder["access_token"]`` should now use
     ``founder["headers"]["Authorization"]``.
     """
+=======
+    """Helper: register and return auth headers.
+
+    Tokens are now in cookies (vg_access / vg_refresh); the client
+    cookie jar is updated automatically. Returns an empty dict so
+    callers that pass ``headers=_register_user(...)`` keep working.
+
+    Clears any pre-existing cookies first so this test user is the
+    only authenticated identity on the client. Callers using the
+    shared client across multiple users (e.g. test_project_org_boundary)
+    depend on this isolation.
+    """
+    client.cookies.clear()
+>>>>>>> 54651d3 (test(cookie-auth): 9 new tests + ASGITransport cookie bridging + jti)
     resp = await client.post("/api/v1/auth/register", json={
         "email": email,
         "name": "Test",
@@ -189,7 +204,13 @@ async def _register_user(client: AsyncClient, email: str, org_name: str) -> dict
         "password": "testpass",
     })
     assert login.status_code == 200, login.text
+<<<<<<< HEAD
     data = login.json()
     token = login.cookies.get("vg_access")
     data["headers"] = {"Authorization": f"Bearer {token}"}
     return data
+=======
+    assert "vg_access" in login.cookies
+    return {}
+    return {"Authorization": f"Bearer {token}"}
+>>>>>>> 54651d3 (test(cookie-auth): 9 new tests + ASGITransport cookie bridging + jti)

@@ -42,6 +42,15 @@ def _encode(payload: dict[str, Any]) -> str:
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
+def _jti() -> str:
+    """Generate a unique JWT ID. Ensures consecutive tokens differ
+    even when iat/exp collide to the same second (matters for
+    /auth/refresh rotation).
+    """
+    import uuid
+    return str(uuid.uuid4())
+
+
 def _decode(token: str, expected_type: str) -> dict[str, Any]:
     """Decode a JWT and assert its ``type`` claim matches *expected_type*.
 
@@ -81,6 +90,7 @@ def create_access_token(subject: str, expires_delta: int | None = None) -> str:
     payload = {
         "sub": subject,
         "type": ACCESS_TOKEN_TYPE,
+        "jti": _jti(),
         "exp": expire,
         "iat": datetime.now(UTC),
     }
@@ -93,6 +103,7 @@ def create_refresh_token(subject: str) -> str:
     payload = {
         "sub": subject,
         "type": REFRESH_TOKEN_TYPE,
+        "jti": _jti(),
         "exp": expire,
         "iat": datetime.now(UTC),
     }

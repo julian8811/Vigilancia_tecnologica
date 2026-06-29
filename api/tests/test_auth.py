@@ -20,6 +20,11 @@ async def test_register_success(client):
     assert data["user"]["email"] == "new@example.com"
     assert data["user"]["name"] == "New User"
     assert "id" in data["user"]
+<<<<<<< HEAD
+=======
+    # The JWTs travel in cookies, not in the body.
+    assert "access_token" not in data
+>>>>>>> 54651d3 (test(cookie-auth): 9 new tests + ASGITransport cookie bridging + jti)
     assert "vg_access" in resp.cookies
     assert "vg_refresh" in resp.cookies
 
@@ -44,7 +49,11 @@ async def test_register_duplicate_email(client):
 
 @pytest.mark.asyncio
 async def test_login_success(client):
+<<<<<<< HEAD
     """A registered user can login → 200 + cookies set."""
+=======
+    """A registered user can login → 200 + user in body + cookies set."""
+>>>>>>> 54651d3 (test(cookie-auth): 9 new tests + ASGITransport cookie bridging + jti)
     await client.post("/api/v1/auth/register", json={
         "email": "login@example.com",
         "name": "Login User",
@@ -58,6 +67,10 @@ async def test_login_success(client):
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert "user" in data
+<<<<<<< HEAD
+=======
+    assert "access_token" not in data
+>>>>>>> 54651d3 (test(cookie-auth): 9 new tests + ASGITransport cookie bridging + jti)
     assert "vg_access" in resp.cookies
     assert "vg_refresh" in resp.cookies
 
