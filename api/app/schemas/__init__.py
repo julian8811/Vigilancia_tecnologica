@@ -11,7 +11,13 @@ from app.schemas.corpus import CorpusEntry, CorpusSummary
 from app.schemas.graph import GraphRunResponse, GraphRunListResponse, GraphNodeResponse, GraphNodeListResponse, GraphEdgeResponse, GraphEdgeListResponse, GraphQueryRequest, GraphQueryResponse, GraphGenerateResponse
 from app.schemas.analysis import TechnologyResponse, TrendResponse, ActorResponse, OpportunityResponse, AnalysisRunResponse
 from app.schemas.report import ReportCreate, ReportResponse, ReportListResponse
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, ChangePasswordRequest
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    LoginRequest,
+    LogoutResponse,
+    RegisterRequest,
+    SessionResponse,
+)
 from app.schemas.collection_run import CollectionRunResponse, CollectionRunListResponse
 
 __all__ = [
