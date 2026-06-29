@@ -169,7 +169,18 @@ async def test_project_org_boundary(client: AsyncClient):
 
 
 async def _register_user(client: AsyncClient, email: str, org_name: str) -> dict[str, str]:
-    """Helper: register and return auth headers."""
+    """Helper: register and return auth headers.
+
+    Tokens are now in cookies (vg_access / vg_refresh); the client
+    cookie jar is updated automatically. Returns an empty dict so
+    callers that pass ``headers=_register_user(...)`` keep working.
+
+    Clears any pre-existing cookies first so this test user is the
+    only authenticated identity on the client. Callers using the
+    shared client across multiple users (e.g. test_project_org_boundary)
+    depend on this isolation.
+    """
+    client.cookies.clear()
     resp = await client.post("/api/v1/auth/register", json={
         "email": email,
         "name": "Test",
@@ -181,5 +192,7 @@ async def _register_user(client: AsyncClient, email: str, org_name: str) -> dict
         "email": email,
         "password": "testpass",
     })
-    token = login.json()["access_token"]
+    assert login.status_code == 200, login.text
+    assert "vg_access" in login.cookies
+    return {}
     return {"Authorization": f"Bearer {token}"}

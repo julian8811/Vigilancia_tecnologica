@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
+from app.core.config import settings
 from app.core.security import decode_access_token
 from app.db.session import async_session_factory
 from app.models.user import User
@@ -18,7 +19,11 @@ from app.repositories.user_repository import UserRepository
 
 logger = get_logger(__name__)
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# auto_error=False so this dependency returns None (not a 401) when
+# the Authorization header is missing. We then fall through to the
+# cookie path in get_access_token. If both are missing/invalid, we
+# raise 401 manually with a project-specific message.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 credentials_exception = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -47,36 +52,38 @@ async def get_db() -> AsyncSession:
             await session.close()
 
 
-async def get_current_user(
+async def get_access_token(
     request: Request,
+    bearer: str | None = Depends(oauth2_scheme),
+) -> str:
+    """Return the JWT access token from header or cookie.
+
+    Resolution order:
+      1. ``Authorization: Bearer <token>`` (programmatic clients).
+      2. ``vg_access`` cookie (web app).
+
+    Raises 401 if neither is present or if the token is malformed.
+    """
+    cookie_token = request.cookies.get(settings.ACCESS_TOKEN_COOKIE)
+    raw = bearer or cookie_token
+    if not raw:
+        raise credentials_exception
+    return raw
+
+
+async def get_current_user(
+    token: str = Depends(get_access_token),
     db: AsyncSession = Depends(get_db),
-    token: str | None = Depends(oauth2_scheme),
 ) -> User:
     """Decode the JWT and return the corresponding ``User`` ORM instance.
 
-    Accepts the token from either:
-
-    * The ``Authorization: Bearer ...`` header (for programmatic
-      clients, server-to-server, and tests).
-    * The ``vg_access`` cookie (set by ``/auth/login`` and
-      ``/auth/register``).
-
-    Raises ``401 UNAUTHORIZED`` when the token is missing, invalid,
-    or the user no longer exists.
+    Raises ``401 UNAUTHORIZED`` when the token is invalid or the user
+    no longer exists. The token is sourced by ``get_access_token``,
+    which reads from the Authorization header first, then the
+    ``vg_access`` cookie.
     """
-    # Prefer the cookie so cookie-only clients (the web app) work
-    # without sending an Authorization header. Header takes
-    # precedence when present — that lets API clients use a Bearer
-    # token without the cookie round-trip.
-    from app.core.config import settings
-
-    cookie_token = request.cookies.get(settings.ACCESS_TOKEN_COOKIE)
-    raw_token = token or cookie_token
-    if not raw_token:
-        raise credentials_exception
-
     try:
-        payload = decode_access_token(raw_token)
+        payload = decode_access_token(token)
         user_id_str: str | None = payload.get("sub")
         if user_id_str is None:
             raise credentials_exception
@@ -97,10 +104,10 @@ async def get_current_active_user(
 ) -> User:
     """Require the authenticated user to be active.
 
-    Raises ``400 BAD REQUEST`` when the account is deactivated.
+    Raises ``403 FORBIDDEN`` when the account is deactivated.
     """
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Usuario inactivo")
+        raise HTTPException(status_code=403, detail="Cuenta desactivada")
     return current_user
 
 

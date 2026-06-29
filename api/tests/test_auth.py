@@ -7,7 +7,7 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_register_success(client):
-    """A user can register with valid data → 201 + user + token."""
+    """A user can register with valid data → 201 + user in body + cookies set."""
     resp = await client.post("/api/v1/auth/register", json={
         "email": "new@example.com",
         "name": "New User",
@@ -16,11 +16,14 @@ async def test_register_success(client):
     })
     assert resp.status_code == 201, resp.text
     data = resp.json()
-    assert data["access_token"] is not None
-    assert data["token_type"] == "bearer"
+    assert "user" in data
     assert data["user"]["email"] == "new@example.com"
     assert data["user"]["name"] == "New User"
     assert "id" in data["user"]
+    # The JWTs travel in cookies, not in the body.
+    assert "access_token" not in data
+    assert "vg_access" in resp.cookies
+    assert "vg_refresh" in resp.cookies
 
 
 @pytest.mark.asyncio
@@ -43,7 +46,7 @@ async def test_register_duplicate_email(client):
 
 @pytest.mark.asyncio
 async def test_login_success(client):
-    """A registered user can login → 200 + access_token."""
+    """A registered user can login → 200 + user in body + cookies set."""
     await client.post("/api/v1/auth/register", json={
         "email": "login@example.com",
         "name": "Login User",
@@ -56,8 +59,10 @@ async def test_login_success(client):
     })
     assert resp.status_code == 200, resp.text
     data = resp.json()
-    assert "access_token" in data
-    assert data["token_type"] == "bearer"
+    assert "user" in data
+    assert "access_token" not in data
+    assert "vg_access" in resp.cookies
+    assert "vg_refresh" in resp.cookies
 
 
 @pytest.mark.asyncio
