@@ -33,8 +33,6 @@ import pytest
 # ``from app.main import app`` (which loads settings.DATABASE_URL) sees
 # the SQLite path, not the production Postgres default.
 # ---------------------------------------------------------------------------
-import sqlalchemy as _sa  # noqa: E402
-
 _db_fd, _db_path = tempfile.mkstemp(suffix=".db", prefix="vigilagraph_test_")
 TEST_DATABASE_URL = f"sqlite+aiosqlite:///{_db_path}"
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
@@ -186,6 +184,7 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
     org_id = data["user"]["organization_id"]
 
     async def _override_current_user():
+        from fastapi import HTTPException
         from app.models.user import User
         from sqlalchemy import select
 
@@ -196,6 +195,11 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
             user = result.scalar_one_or_none()
             if user is None:
                 raise RuntimeError(f"User {user_id} not found in DB")
+            # Mirror the real dependency: an is_active=False user is
+            # forbidden. Tests that toggle is_active mid-test (e.g.
+            # test_inactive_user_gets_403) rely on this.
+            if not user.is_active:
+                raise HTTPException(status_code=403, detail="Cuenta desactivada")
             return user
 
     app.dependency_overrides[get_current_active_user] = _override_current_user
