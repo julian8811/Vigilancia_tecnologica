@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from app.api.deps import get_current_active_user, get_db, verify_project_org
+from app.api.deps import get_current_active_user, get_db, require_min_role, verify_project_org
+from app.core.permissions import Role
 from app.models.user import User
 from app.repositories.analysis_repository import (
     ActorRepository,
@@ -41,10 +42,10 @@ async def run_analysis(
     project_id: uuid.UUID,
     request: AnalysisRunRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     _: User = Depends(verify_project_org),
 ) -> AnalysisRunResponse:
-    """Run the full AI analysis pipeline for a project."""
+    """Run the full AI analysis pipeline. Analyst+."""
     service = AnalysisService(db)
     result = await service.run_full_analysis(project_id, request)
     return result
@@ -134,3 +135,6 @@ async def list_opportunities(
         items=[OpportunityResponse.model_validate(o) for o in items],
         total=total, page=page, page_size=page_size, total_pages=total_pages,
     )
+
+
+_require_analyst = require_min_role(Role.ANALYST)

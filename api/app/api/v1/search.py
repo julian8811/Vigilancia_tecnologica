@@ -10,12 +10,15 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from app.api.deps import get_current_active_user, get_db, verify_project_org
+from app.api.deps import get_current_active_user, get_db, require_min_role, verify_project_org
 from app.core.config import settings
+from app.core.permissions import Role
 from app.models.user import User
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["búsqueda"])
+
+_require_analyst = require_min_role(Role.ANALYST)
 
 
 class SearchPreviewRequest(BaseModel):
@@ -49,9 +52,9 @@ class CollectFromSearchRequest(BaseModel):
 async def search_preview(
     request: SearchPreviewRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
 ) -> SearchPreviewResponse:
-    """Preview search results from an external source without importing them."""
+    """Preview search results. Analyst+."""
     import httpx
 
     results: list[SearchResultItem] = []
@@ -125,10 +128,10 @@ async def collect_from_search(
     project_id: uuid.UUID,
     request: CollectFromSearchRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     _: User = Depends(verify_project_org),
 ) -> dict:
-    """Import manually selected search results as documents."""
+    """Import manually selected search results as documents. Analyst+."""
     from datetime import datetime, UTC
     from app.models.document import Document
 
