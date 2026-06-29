@@ -1,0 +1,61 @@
+name: Feature request
+description: Propose a new feature or improvement
+title: "[feat] "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to propose a new feature. For bug reports, use the bug template instead.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem does this solve? Why is it worth solving?
+      placeholder: "Users currently have to manually export reports as CSV after every analysis. This is friction for our researchers."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What do you want to build? Describe the UX and behaviour.
+      placeholder: "Add a 'Download as CSV' button on the analysis results page that exports the current table."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you consider? Why this one?
+    validations:
+      required: false
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope & non-goals
+      description: What is in scope for a first cut? What is explicitly NOT being built?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - API
+        - Web frontend
+        - Worker / background jobs
+        - Database / migrations
+        - Infrastructure / deployment
+        - Security
+        - Documentation
+        - Other
+    validations:
+      required: true
