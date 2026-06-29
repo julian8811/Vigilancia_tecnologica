@@ -150,11 +150,50 @@ async def _override_get_db() -> AsyncGenerator[AsyncSession, Any]:
 
 @pytest_asyncio.fixture
 async def client() -> AsyncGenerator[AsyncClient, Any]:
-    """Provide an async test client against the FastAPI app."""
+    """Provide an async test client against the FastAPI app.
+
+    ASGITransport does not propagate cookies across requests. We
+    wrap the transport's handle_async_request to inject a Cookie
+    header from a shared test_cookies dict, and we capture Set-Cookie
+    from each response back into that dict (including Max-Age=0
+    deletes for logout). This makes the test client behave like a
+    real browser.
+    """
     app.dependency_overrides[get_db] = _override_get_db
     transport = ASGITransport(app=app)  # type: ignore[arg-type]
+
+    test_cookies: dict[str, str] = {}
+    original_handle = transport.handle_async_request
+
+    async def patched_handle(*args, **kwargs):
+        req = kwargs.get("request") or (args[0] if args else None)
+        if req is not None and "cookie" not in (k.lower() for k in req.headers) and test_cookies:
+            req.headers["Cookie"] = "; ".join(
+                f"{k}={v}" for k, v in test_cookies.items()
+            )
+        resp = await original_handle(*args, **kwargs)
+        for name, value in resp.headers.raw:
+            if name.lower() != b"set-cookie":
+                continue
+            line = value.decode()
+            kv = line.split(";", 1)[0]
+            if "=" not in kv:
+                continue
+            cookie_name, cookie_value = kv.split("=", 1)
+            cookie_name = cookie_name.strip()
+            cookie_value = cookie_value.strip()
+            is_expired = "max-age=0" in line.lower() or cookie_value == ""
+            if is_expired:
+                test_cookies.pop(cookie_name, None)
+            else:
+                test_cookies[cookie_name] = cookie_value
+        return resp
+
+    transport.handle_async_request = patched_handle  # type: ignore[assignment]
+
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
     app.dependency_overrides.clear()
 
 
@@ -176,7 +215,9 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
     })
     assert resp.status_code == 201, f"Register failed: {resp.text}"
     data = resp.json()
-    token = data["access_token"]
+    # Cookie-based auth: extract the vg_access token from the
+    # Set-Cookie header for use in Authorization: Bearer calls.
+    token = resp.cookies.get("vg_access")
 
     # Override the current-user dependency with the registered user so tests
     # that use auth_headers DON'T hit the login endpoint again.
