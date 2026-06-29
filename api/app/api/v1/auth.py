@@ -13,13 +13,18 @@ still applies. Per-IP rate limiting is on the roadmap.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
 from app.api.deps import get_audit_context, get_current_active_user, get_db
 from app.core.config import settings
+from app.core.ratelimit import (
+    login_rate_limit,
+    refresh_rate_limit,
+    register_rate_limit,
+)
 from app.core.security import (
     clear_csrf_cookie,
     clear_session_cookies,
@@ -85,12 +90,22 @@ def _set_session_and_csrf(response: Response, user: User) -> str:
 @router.post("/register", response_model=SessionResponse, status_code=201)
 async def register(
     request: Request,
-    body: RegisterRequest,
     response: Response,
+    _rl: Response | None = Depends(register_rate_limit),
+    body: RegisterRequest = Body(...),
     db: AsyncSession = Depends(get_db),
     audit_context: AuditContext = Depends(get_audit_context),
 ) -> SessionResponse:
-    """Register a new user account. Sets the session cookies on success."""
+    """Register a new user account. Sets the session cookies on success.
+
+    The ``_rl`` rate-limit dep runs before the body is parsed so a
+    429 response short-circuits the rest of the pipeline. When
+    ``REDIS_URL`` is empty (no Redis) the dep is a no-op and the
+    route proceeds normally.
+    """
+    if _rl is not None:
+        # 429 short-circuit from the rate limiter.
+        return _rl  # type: ignore[return-value]
     service = AuthService(db, audit_context=audit_context)
     user = await service.register_user(body)
     csrf_token = _set_session_and_csrf(response, user)
@@ -101,12 +116,21 @@ async def register(
 @router.post("/login", response_model=SessionResponse)
 async def login(
     request: Request,
-    body: LoginRequest,
     response: Response,
+    _rl: Response | None = Depends(login_rate_limit),
+    body: LoginRequest = Body(...),
     db: AsyncSession = Depends(get_db),
     audit_context: AuditContext = Depends(get_audit_context),
 ) -> SessionResponse:
-    """Authenticate. Sets the session cookies on success."""
+    """Authenticate. Sets the session cookies on success.
+
+    The ``_rl`` rate-limit dep runs before the body is parsed so a
+    429 response short-circuits the rest of the pipeline. The dep
+    re-reads the request body to extract the email for the rate-limit
+    key.
+    """
+    if _rl is not None:
+        return _rl  # type: ignore[return-value]
     service = AuthService(db, audit_context=audit_context)
     user, outcome = await service.login_user(body)
     if user is None:
@@ -122,8 +146,16 @@ async def login(
 async def refresh(
     request: Request,
     response: Response,
+    _rl: Response | None = Depends(refresh_rate_limit),
     db: AsyncSession = Depends(get_db),
 ) -> SessionResponse:
+    """Issue a fresh access + refresh token pair.
+
+    The ``_rl`` rate-limit dep runs before any work and short-circuits
+    with 429 if the limit is exceeded.
+    """
+    if _rl is not None:
+        return _rl  # type: ignore[return-value]
     """Issue a fresh access + refresh token pair."""
     from uuid import UUID
 

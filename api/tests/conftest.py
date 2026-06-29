@@ -61,10 +61,22 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 )
 
 from app.api.deps import get_current_active_user, get_db  # noqa: E402
+from app.core import ratelimit as _ratelimit  # noqa: E402
 from app.db.base import Base  # noqa: E402
 from app.main import app  # noqa: E402
 
 # ---------------------------------------------------------------------------
+# Test-only rate-limit configuration
+#
+# The auth endpoints depend on three sliding-window rate limiters
+# (login/register/refresh). In production these are backed by Redis
+# (REDIS_URL). In tests we leave the Redis client as ``None`` — the
+# ratelimit module treats this as a no-op and logs a single
+# ``rate_limit_disabled`` warning. Tests that need to exercise the
+# limiters explicitly (see tests/test_ratelimit.py) inject a
+# ``fakeredis.aioredis.FakeRedis`` via ``ratelimit.set_redis(...)``.
+# ---------------------------------------------------------------------------
+_OLD_REDIS = None# ---------------------------------------------------------------------------
 # Test database — file-based SQLite so every connection sees the same data.
 # ---------------------------------------------------------------------------
 
@@ -119,9 +131,18 @@ async def setup_database():
 
     original_factory = _db_session.async_session_factory
     _db_session.async_session_factory = TestSessionFactory
+
+    # Reset the rate-limit module's redis client so each test starts
+    # with a clean slate. Tests that need a redis backend inject
+    # ``fakeredis.aioredis.FakeRedis`` via ``_ratelimit.set_redis``.
+    global _OLD_REDIS
+    _OLD_REDIS = await _ratelimit.get_redis()
+    await _ratelimit.set_redis(None)
+
     try:
         yield
     finally:
+        await _ratelimit.set_redis(_OLD_REDIS)
         _db_session.async_session_factory = original_factory
         async with test_engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)

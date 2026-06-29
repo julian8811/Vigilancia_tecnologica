@@ -82,6 +82,12 @@ class Settings(BaseSettings):
     # ── Logging ──────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"
 
+    # ── Redis (rate limit + future cache) ────────────────────────
+    # When empty, the per-endpoint rate-limit deps in app.core.ratelimit
+    # degrade to a no-op so the app boots without Redis. Set in prod
+    # via env (e.g. `redis://redis:6379/0`).
+    REDIS_URL: str = ""
+
     # ── Derived properties ───────────────────────────────────────
 
     @property

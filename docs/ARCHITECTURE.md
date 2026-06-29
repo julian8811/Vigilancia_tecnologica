@@ -92,6 +92,7 @@ This section tracks the gaps found in the technical audit (2026-06-29). See [SEC
 | # | Issue | Location | Status |
 |---|-------|----------|--------|
 | 1 | `JWT_SECRET` defaults to a known string | `api/app/core/config.py:28` | **Mitigated by** required-env check (TBD) |
+| 2 | JWT in `localStorage` (XSS-stealable) | `web/hooks/use-auth.tsx:36,60,81` | Open |
 | 3 | No rate limit on `/auth/login` | `api/app/api/v1/auth.py:19,26` | Open |
 | 4 | E2E tests assert English text (broken) | `web/e2e/smoke.spec.ts` | Open |
 | 5 | Pre-commit hooks reference `apps/...` | `.pre-commit-config.yaml:14,20,26` | **Fixed in this branch** |
@@ -103,8 +104,10 @@ This section tracks the gaps found in the technical audit (2026-06-29). See [SEC
 
 ### HIGH — significant risk
 
+- No request ID middleware (`api/app/main.py`).
+- No security headers middleware.
 - `/ready` returns 200 when degraded (`api/app/main.py:83-91`).
-
+- `require_roles` defined but never used (`api/app/api/deps.py:108-128`). **Fixed in this branch** — replaced by `require_min_role` and wired across all mutating routers (see ADR-003).
 - No PII redaction in logs (`api/app/services/auth_service.py:42,73,...`).
 - No audit log for sensitive operations.
 - Inconsistent error response shape (`{error}` vs `{detail}`).
@@ -117,6 +120,7 @@ This section tracks the gaps found in the technical audit (2026-06-29). See [SEC
 - No global body size limit.
 - `seed-test-docs` reachable in OpenAPI spec.
 - Dead code in `graph_service.py:603-608`.
+- `get_current_active_user` returns 400 instead of 401/403.
 - `bcrypt` instead of `argon2id` (passlib default).
 - `alembic/env.py` has `# import app.models` commented out → no `--autogenerate`.
 - Hardcoded S3 default credentials in `config.py:42-44`.

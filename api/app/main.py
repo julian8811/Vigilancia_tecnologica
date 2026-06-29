@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+import redis.asyncio as redis_async
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -19,6 +20,7 @@ from app.core.csrf import CSRFMiddleware
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIDMiddleware, SecurityHeadersMiddleware
+from app.core.ratelimit import set_redis
 from app.db.session import async_session_factory
 
 logger = get_logger(__name__)
@@ -36,11 +38,27 @@ async def lifespan(app: FastAPI):
     # Database engine is lazily initialised via the session factory.
     # Add any other startup tasks here (e.g. connect to S3).
 
+    # Optional Redis client: when ``REDIS_URL`` is set, the per-endpoint
+    # rate-limit deps enforce sliding-window quotas. When unset, the
+    # deps log a single ``rate_limit_disabled`` warning and become a
+    # no-op so the app boots and serves traffic without Redis.
+    if settings.REDIS_URL:
+        redis_client = redis_async.from_url(
+            settings.REDIS_URL, encoding="utf-8", decode_responses=True
+        )
+        app.state.redis = redis_client
+        await set_redis(redis_client)
+        logger.info("rate_limit_active", redis_url=settings.REDIS_URL)
+    else:
+        logger.info("rate_limit_disabled: REDIS_URL not set")
+
     yield
 
     # ── Shutdown ─────────────────────────────────────────────────
     from app.db.session import engine
 
+    if getattr(app.state, "redis", None) is not None:
+        await app.state.redis.aclose()
     await engine.dispose()
     logger.info("shutdown_complete")
 
