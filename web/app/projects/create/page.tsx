@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useCreateProject } from "@/hooks/use-projects";
+import { RequireAuth } from "@/components/auth/require-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -104,6 +105,7 @@ export default function CreateProjectPage() {
   };
 
   return (
+    <RequireAuth>
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
@@ -239,11 +241,12 @@ export default function CreateProjectPage() {
               {submitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Create Project
-            </Button>
-          </CardFooter>
-        </Card>
-      </form>
-    </div>
-  );
-}
+                Create Project
+              </Button>
+            </CardFooter>
+          </Card>
+        </form>
+      </div>
+    </RequireAuth>
+    );
+  }

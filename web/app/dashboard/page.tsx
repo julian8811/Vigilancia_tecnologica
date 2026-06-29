@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { useProjects } from "@/hooks/use-projects";
+import { RequireAuth } from "@/components/auth/require-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -55,6 +56,7 @@ export default function DashboardPage() {
   const recentProjects = projects.slice(0, 5);
 
   return (
+    <RequireAuth>
     <div className="space-y-6">
       {/* Welcome */}
       <div className="flex items-center justify-between">
@@ -198,5 +200,6 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     </div>
+    </RequireAuth>
   );
 }

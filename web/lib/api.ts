@@ -1,21 +1,23 @@
 /**
- * Thin fetch wrapper with built-in auth token handling.
+ * Thin fetch wrapper with cookie-based auth.
  *
- * Provides typed fetch interface for the API with automatic
- * auth token injection and form-data support.
+ * Tokens live in httpOnly cookies (`vg_access`, `vg_refresh`) that
+ * the browser sends automatically. The client never reads or
+ * stores them.
  */
+
+import { toast } from "sonner";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface ApiOptions extends Omit<RequestInit, "headers" | "body"> {
   headers?: Record<string, string>;
-  token?: string;
   body?: unknown;
 }
 
-interface ApiError {
-  error: string;
-  status: number;
+interface ApiErrorBody {
+  detail?: string;
+  error?: string;
 }
 
 export class ApiClientError extends Error {
@@ -30,37 +32,34 @@ export class ApiClientError extends Error {
   }
 }
 
-let defaultToken: string | null = null;
+/** Callback invoked when any API call returns 401. */
+let onUnauthorized: (() => void) | null = null;
 
-export function setAuthToken(token: string | null) {
-  defaultToken = token;
+/**
+ * Register a handler to run whenever the API returns 401.
+ * The handler should be idempotent and must not throw.
+ */
+export function setOnUnauthorized(handler: (() => void) | null) {
+  onUnauthorized = handler;
 }
 
-export function getAuthToken(): string | null {
-  return defaultToken;
+function readErrorDetail(body: ApiErrorBody, fallback: string): string {
+  return body.detail || body.error || fallback;
 }
 
 async function request<T>(
   endpoint: string,
   options: ApiOptions = {},
 ): Promise<T> {
-  const { token: explicitToken, headers: extraHeaders, body, ...fetchOptions } = options;
-  const token = explicitToken || defaultToken;
+  const { headers: extraHeaders, body, ...fetchOptions } = options;
 
   const headers: Record<string, string> = {
     ...extraHeaders,
   };
-
-  // Only set default Content-Type if not already set (e.g. for form data)
-  if (!headers["Content-Type"]) {
+  if (!headers["Content-Type"] && body !== undefined && typeof body !== "string") {
     headers["Content-Type"] = "application/json";
   }
 
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  // Pass string bodies directly (for URLSearchParams etc.), JSON-stringify objects
   const fetchBody =
     body !== undefined
       ? typeof body === "string"
@@ -72,16 +71,30 @@ async function request<T>(
     ...fetchOptions,
     headers,
     body: fetchBody,
+    credentials: "include",
   });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({
-      error: "Unknown error",
-    }))) as ApiError;
-    throw new ApiClientError(response.status, body.error);
+    const errBody = (await response.json().catch(() => ({}))) as ApiErrorBody;
+    const detail = readErrorDetail(errBody, `Error ${response.status}`);
+
+    if (response.status === 401 && onUnauthorized) {
+      try {
+        onUnauthorized();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error("onUnauthorized handler threw", e);
+      }
+    }
+
+    throw new ApiClientError(response.status, detail);
   }
 
-  return response.json() as Promise<T>;
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
 }
 
 export const api = {
@@ -97,22 +110,27 @@ export const api = {
   delete<T>(endpoint: string, options?: ApiOptions) {
     return request<T>(endpoint, { ...options, method: "DELETE" });
   },
-  /** Fetch raw response (blob, HTML, etc.) without JSON parsing. */
   async getRaw(endpoint: string, options?: ApiOptions): Promise<Response> {
-    const { token: explicitToken, headers: extraHeaders, body: _body, ...fetchOptions } = options || {};
-    const token = explicitToken || defaultToken;
+    const { headers: extraHeaders, body: _body, ...fetchOptions } = options || {};
     const headers: Record<string, string> = { ...extraHeaders };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
     const response = await fetch(`${BASE_URL}/api/v1${endpoint}`, {
       ...fetchOptions,
       method: "GET",
       headers,
+      credentials: "include",
     } as RequestInit);
     if (!response.ok) {
-      const body = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new ApiClientError(response.status, body.error || body.detail || "Request failed");
+      const errBody = (await response.json().catch(() => ({}))) as ApiErrorBody;
+      const detail = readErrorDetail(errBody, `Error ${response.status}`);
+      if (response.status === 401 && onUnauthorized) {
+        try {
+          onUnauthorized();
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.error("onUnauthorized handler threw", e);
+        }
+      }
+      throw new ApiClientError(response.status, detail);
     }
     return response;
   },

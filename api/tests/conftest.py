@@ -29,11 +29,21 @@ from typing import Any
 import pytest
 
 # ---------------------------------------------------------------------------
+# Build the test DATABASE_URL BEFORE any app imports so that
+# ``from app.main import app`` (which loads settings.DATABASE_URL) sees
+# the SQLite path, not the production Postgres default.
+# ---------------------------------------------------------------------------
+_db_fd, _db_path = tempfile.mkstemp(suffix=".db", prefix="vigilagraph_test_")
+TEST_DATABASE_URL = f"sqlite+aiosqlite:///{_db_path}"
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+os.environ.setdefault("JWT_SECRET", "test-secret-please-do-not-use-in-production")
+
+# ---------------------------------------------------------------------------
 # Make JSONB (PostgreSQL-only) work on SQLite by compiling it to standard
 # JSON.  This avoids model changes just for the test suite.
 # ---------------------------------------------------------------------------
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB  # noqa: E402
+from sqlalchemy.ext.compiler import compiles  # noqa: E402
 
 
 @compiles(JSONB, "sqlite")
@@ -41,21 +51,22 @@ def _compile_jsonb_sqlite(element, compiler, **kw):  # noqa: ARG001
     return compiler.visit_JSON(element, **kw)
 
 
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import NullPool
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+import pytest_asyncio  # noqa: E402
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy import NullPool  # noqa: E402
+from sqlalchemy.ext.asyncio import (  # noqa: E402
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
-from app.api.deps import get_current_active_user, get_db
-from app.db.base import Base
-from app.main import app
+from app.api.deps import get_current_active_user, get_db  # noqa: E402
+from app.db.base import Base  # noqa: E402
+from app.main import app  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Test database — file-based SQLite so every connection sees the same data.
 # ---------------------------------------------------------------------------
-
-_db_fd, _db_path = tempfile.mkstemp(suffix=".db", prefix="vigilagraph_test_")
-TEST_DATABASE_URL = f"sqlite+aiosqlite:///{_db_path}"
 
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
@@ -97,12 +108,23 @@ async def setup_database():
     """Create all tables before each test and drop them after.
 
     File-based SQLite ensures all connections share the same data.
+    Also redirects the production async_session_factory to the test
+    engine so AuditService (which uses its own session) writes to
+    the test DB.
     """
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+
+    import app.db.session as _db_session
+
+    original_factory = _db_session.async_session_factory
+    _db_session.async_session_factory = TestSessionFactory
+    try:
+        yield
+    finally:
+        _db_session.async_session_factory = original_factory
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
 
 
 # ---------------------------------------------------------------------------
@@ -128,11 +150,50 @@ async def _override_get_db() -> AsyncGenerator[AsyncSession, Any]:
 
 @pytest_asyncio.fixture
 async def client() -> AsyncGenerator[AsyncClient, Any]:
-    """Provide an async test client against the FastAPI app."""
+    """Provide an async test client against the FastAPI app.
+
+    ASGITransport does not propagate cookies across requests. We
+    wrap the transport's handle_async_request to inject a Cookie
+    header from a shared test_cookies dict, and we capture Set-Cookie
+    from each response back into that dict (including Max-Age=0
+    deletes for logout). This makes the test client behave like a
+    real browser.
+    """
     app.dependency_overrides[get_db] = _override_get_db
     transport = ASGITransport(app=app)  # type: ignore[arg-type]
+
+    test_cookies: dict[str, str] = {}
+    original_handle = transport.handle_async_request
+
+    async def patched_handle(*args, **kwargs):
+        req = kwargs.get("request") or (args[0] if args else None)
+        if req is not None and "cookie" not in (k.lower() for k in req.headers) and test_cookies:
+            req.headers["Cookie"] = "; ".join(
+                f"{k}={v}" for k, v in test_cookies.items()
+            )
+        resp = await original_handle(*args, **kwargs)
+        for name, value in resp.headers.raw:
+            if name.lower() != b"set-cookie":
+                continue
+            line = value.decode()
+            kv = line.split(";", 1)[0]
+            if "=" not in kv:
+                continue
+            cookie_name, cookie_value = kv.split("=", 1)
+            cookie_name = cookie_name.strip()
+            cookie_value = cookie_value.strip()
+            is_expired = "max-age=0" in line.lower() or cookie_value == ""
+            if is_expired:
+                test_cookies.pop(cookie_name, None)
+            else:
+                test_cookies[cookie_name] = cookie_value
+        return resp
+
+    transport.handle_async_request = patched_handle  # type: ignore[assignment]
+
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
     app.dependency_overrides.clear()
 
 
@@ -154,7 +215,9 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
     })
     assert resp.status_code == 201, f"Register failed: {resp.text}"
     data = resp.json()
-    token = data["access_token"]
+    # Cookie-based auth: extract the vg_access token from the
+    # Set-Cookie header for use in Authorization: Bearer calls.
+    token = resp.cookies.get("vg_access")
 
     # Override the current-user dependency with the registered user so tests
     # that use auth_headers DON'T hit the login endpoint again.
@@ -162,6 +225,7 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
     org_id = data["user"]["organization_id"]
 
     async def _override_current_user():
+        from fastapi import HTTPException
         from app.models.user import User
         from sqlalchemy import select
 
@@ -172,6 +236,11 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
             user = result.scalar_one_or_none()
             if user is None:
                 raise RuntimeError(f"User {user_id} not found in DB")
+            # Mirror the real dependency: an is_active=False user is
+            # forbidden. Tests that toggle is_active mid-test (e.g.
+            # test_inactive_user_gets_403) rely on this.
+            if not user.is_active:
+                raise HTTPException(status_code=403, detail="Cuenta desactivada")
             return user
 
     app.dependency_overrides[get_current_active_user] = _override_current_user

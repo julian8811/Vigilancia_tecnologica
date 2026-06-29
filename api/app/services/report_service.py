@@ -20,6 +20,7 @@ from app.models.graph import GraphNode, GraphRun
 from app.models.project import SurveillanceProject
 from app.models.report import Report
 from app.repositories.report_repository import ReportRepository
+from app.services.audit_service import AuditContext, AuditEvent, AuditService
 
 logger = get_logger(__name__)
 
@@ -92,9 +93,11 @@ REPORT_TEMPLATE_HTML = """<!DOCTYPE html>
 class ReportService:
     """Generates surveillance reports from project data."""
 
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, audit_context: AuditContext | None = None) -> None:
         self.db = db
         self.repo = ReportRepository(db)
+        self.audit = AuditService(db)
+        self.audit_context = audit_context or AuditContext()
 
     async def list_by_project(
         self, project_id: uuid.UUID, *, page: int = 1, page_size: int = 50,
@@ -113,6 +116,9 @@ class ReportService:
         title: str | None = None,
         report_type: str = "complete",
         report_id: uuid.UUID | None = None,
+        *,
+        user_id: uuid.UUID | None = None,
+        org_id: uuid.UUID | None = None,
     ) -> Report:
         """Generate a report synchronously. Returns the Report record."""
         # 1. Get project
@@ -223,6 +229,22 @@ class ReportService:
             await self.db.refresh(report)
 
             logger.info("report_generated", report_id=str(report.id), project_id=str(project_id))
+
+            # Audit only on success — the failure path is logged via
+            # structlog already and the report row carries the error.
+            await self.audit.record(
+                AuditEvent.REPORT_GENERATE,
+                context=AuditContext(
+                    actor_id=user_id,
+                    organization_id=org_id,
+                    ip=self.audit_context.ip,
+                    user_agent=self.audit_context.user_agent,
+                    request_id=self.audit_context.request_id,
+                ),
+                target_type="report",
+                target_id=report.id,
+                metadata={"project_id": str(project_id), "report_type": report_type},
+            )
 
         except Exception as exc:
             report.status = "failed"

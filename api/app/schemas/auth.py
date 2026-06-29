@@ -1,8 +1,6 @@
-"""Auth schemas — registration, login, and token responses."""
+"""Auth schemas — registration, login, refresh, and logout."""
 
 from __future__ import annotations
-
-from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -25,14 +23,27 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class TokenResponse(BaseModel):
-    """JWT access-token response."""
-    access_token: str
-    token_type: str = "bearer"
-    user: UserResponse
-
-
 class ChangePasswordRequest(BaseModel):
     """Payload for changing the current user's password."""
     old_password: str
     new_password: str
+
+
+class SessionResponse(BaseModel):
+    """Response for login, register, and refresh.
+
+    The JWT itself is **not** in the body — it travels in an
+    httpOnly cookie set by the response. The body only carries the
+    user profile so the client can render the post-login UI without
+    needing to parse a Set-Cookie header.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    user: UserResponse
+
+
+class LogoutResponse(BaseModel):
+    """Response for /auth/logout."""
+
+    detail: str = "Sesión cerrada"

@@ -9,13 +9,23 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from app.api.deps import get_current_active_user, get_db, verify_project_org
+from app.api.deps import (
+    get_audit_context,
+    get_current_active_user,
+    get_db,
+    require_min_role,
+    verify_project_org,
+)
+from app.core.permissions import Role
 from app.models.user import User
 from app.schemas.report import ReportCreate, ReportListResponse, ReportResponse
+from app.services.audit_service import AuditContext
 from app.services.report_service import ReportService
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/projects/{project_id}/reports", tags=["informes"])
+
+_require_analyst = require_min_role(Role.ANALYST)
 
 
 @router.get("", response_model=ReportListResponse)
@@ -27,6 +37,7 @@ async def list_reports(
     current_user: User = Depends(get_current_active_user),
     _: User = Depends(verify_project_org),
 ) -> ReportListResponse:
+    """List reports. Viewer+."""
     service = ReportService(db)
     items, total = await service.list_by_project(project_id, page=page, page_size=page_size)
     total_pages = max(1, (total + page_size - 1) // page_size)
@@ -41,11 +52,19 @@ async def create_report(
     project_id: uuid.UUID,
     request: ReportCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
+    audit_context: AuditContext = Depends(get_audit_context),
     _: User = Depends(verify_project_org),
 ) -> ReportResponse:
-    service = ReportService(db)
-    report = await service.generate(project_id, request.title, request.report_type)
+    """Generate a new report. Analyst+."""
+    service = ReportService(db, audit_context=audit_context)
+    report = await service.generate(
+        project_id,
+        request.title,
+        request.report_type,
+        user_id=current_user.id,
+        org_id=current_user.organization_id,
+    )
     return ReportResponse.model_validate(report)
 
 
@@ -69,11 +88,18 @@ async def regenerate_report(
     project_id: uuid.UUID,
     report_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
+    audit_context: AuditContext = Depends(get_audit_context),
     _: User = Depends(verify_project_org),
 ) -> ReportResponse:
-    service = ReportService(db)
-    report = await service.generate(project_id, report_id=report_id)
+    """Regenerate an existing report. Analyst+."""
+    service = ReportService(db, audit_context=audit_context)
+    report = await service.generate(
+        project_id,
+        report_id=report_id,
+        user_id=current_user.id,
+        org_id=current_user.organization_id,
+    )
     return ReportResponse.model_validate(report)
 
 
@@ -82,9 +108,10 @@ async def delete_report(
     project_id: uuid.UUID,
     report_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     _: User = Depends(verify_project_org),
 ) -> dict:
+    """Delete a report. Analyst+."""
     service = ReportService(db)
     await service.delete(report_id, project_id)
     return {"detail": "Informe eliminado"}
@@ -99,6 +126,7 @@ async def download_report(
     current_user: User = Depends(get_current_active_user),
     _: User = Depends(verify_project_org),
 ) -> Response:
+    """Download a report. Viewer+."""
     service = ReportService(db)
     report = await service.get(report_id, project_id)
     if report is None:

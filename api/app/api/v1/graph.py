@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from app.api.deps import get_current_active_user, get_db, verify_project_org
+from app.api.deps import get_current_active_user, get_db, require_min_role, verify_project_org
+from app.core.permissions import Role
 from app.models.user import User
 from app.schemas.graph import (
     GraphEdgeListResponse,
@@ -23,6 +24,8 @@ from app.schemas.graph import (
 )
 from app.services.graph_service import GraphService
 
+_require_analyst = require_min_role(Role.ANALYST)
+
 logger = get_logger(__name__)
 router = APIRouter(prefix="/projects/{project_id}/graph", tags=["grafo"])
 
@@ -34,14 +37,11 @@ def _get_service(db: AsyncSession) -> GraphService:
 @router.post("/generate", response_model=GraphGenerateResponse)
 async def generate_graph(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(_require_analyst),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(verify_project_org),
 ) -> GraphGenerateResponse:
-    """Trigger knowledge-graph generation via Graphify.
-
-    MVP: runs synchronously via subprocess.
-    """
+    """Trigger knowledge-graph generation via Graphify. Analyst+."""
     service = _get_service(db)
     return await service.generate(project_id, current_user.organization_id)
 

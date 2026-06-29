@@ -17,6 +17,7 @@ from app.models.project import SurveillanceProject
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.search_strategy_repository import SearchStrategyRepository
 from app.schemas.project import ProjectCreate, ProjectListResponse, ProjectResponse, ProjectUpdate
+from app.services.audit_service import AuditContext, AuditEvent, AuditService
 from app.tasks.collection import run_collection
 
 logger = get_logger(__name__)
@@ -57,9 +58,11 @@ class ProjectStatusMachine:
 class ProjectService:
     """Encapsulates business logic for surveillance projects."""
 
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, audit_context: AuditContext | None = None) -> None:
         self.db = db
         self.repo = ProjectRepository(db)
+        self.audit = AuditService(db)
+        self.audit_context = audit_context or AuditContext()
 
     async def create_project(self, schema: ProjectCreate, org_id: uuid.UUID, user_id: uuid.UUID) -> ProjectResponse:
         """Create a new project with auto-generated slug and ``draft`` status."""
@@ -76,6 +79,19 @@ class ProjectService:
         await self.db.refresh(project)
 
         logger.info("project_created", project_id=project.id, slug=project.slug, org_id=org_id)
+        await self.audit.record(
+            AuditEvent.PROJECT_CREATE,
+            context=AuditContext(
+                actor_id=user_id,
+                organization_id=org_id,
+                ip=self.audit_context.ip,
+                user_agent=self.audit_context.user_agent,
+                request_id=self.audit_context.request_id,
+            ),
+            target_type="project",
+            target_id=project.id,
+            metadata={"name": project.name, "slug": project.slug},
+        )
         return ProjectResponse.model_validate(project)
 
     async def get_project(self, project_id: uuid.UUID, org_id: uuid.UUID) -> ProjectResponse:
@@ -132,15 +148,33 @@ class ProjectService:
         logger.info("project_updated", project_id=project.id, slug=project.slug)
         return ProjectResponse.model_validate(project)
 
-    async def delete_project(self, project_id: uuid.UUID, org_id: uuid.UUID) -> None:
+    async def delete_project(self, project_id: uuid.UUID, org_id: uuid.UUID, user_id: uuid.UUID | None = None) -> None:
         """Hard-delete a project (with org-boundary check)."""
         project = await self.repo.get_with_org_check(project_id, org_id)
         if project is None:
             raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
+        # Capture metadata BEFORE the delete so the audit row carries
+        # the project name even though the row is gone.
+        project_name = project.name
         await self.db.delete(project)
         await self.db.flush()
         logger.info("project_deleted", project_id=project_id, org_id=org_id)
+
+        if user_id is not None:
+            await self.audit.record(
+                AuditEvent.PROJECT_DELETE,
+                context=AuditContext(
+                    actor_id=user_id,
+                    organization_id=org_id,
+                    ip=self.audit_context.ip,
+                    user_agent=self.audit_context.user_agent,
+                    request_id=self.audit_context.request_id,
+                ),
+                target_type="project",
+                target_id=project_id,
+                metadata={"name": project_name},
+            )
 
     async def transition_status(self, project_id: uuid.UUID, to_status: str, org_id: uuid.UUID) -> ProjectResponse:
         """Validate and apply a status transition."""

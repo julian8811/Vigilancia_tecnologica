@@ -41,7 +41,18 @@ class Settings(BaseSettings):
     # Default kept for local dev and tests; production startup MUST override.
     JWT_SECRET: str = "change-me-to-a-long-random-string"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRATION_MINUTES: int = 1440  # 24 hours
+    # Access token: short-lived, used for most API calls.
+    JWT_EXPIRATION_MINUTES: int = 15
+    # Refresh token: long-lived, used only by /auth/refresh to mint
+    # a new access token. Rotated on every refresh.
+    JWT_REFRESH_EXPIRATION_DAYS: int = 7
+    # Names of the cookies set on /auth/login and /auth/register.
+    ACCESS_TOKEN_COOKIE: str = "vg_access"
+    REFRESH_TOKEN_COOKIE: str = "vg_refresh"
+    # When True, the cookies are marked Secure (HTTPS-only). Enable
+    # in production; the api container is reachable on plain HTTP
+    # locally so it stays False in dev.
+    COOKIE_SECURE: bool = False
 
     # ── OpenAI ───────────────────────────────────────────────────
     OPENAI_API_KEY: str = ""
