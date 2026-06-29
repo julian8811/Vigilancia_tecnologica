@@ -8,6 +8,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useProjects, useCreateProject } from "@/hooks/use-projects";
+import { RequireAuth } from "@/components/auth/require-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,16 +65,12 @@ export default function OnboardingPage() {
   const surveillanceType = watch("surveillance_type");
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
-      return;
-    }
     if (projectsData && projectsData.total > 0) {
       router.push("/dashboard");
     }
-  }, [user, authLoading, projectsData, router]);
+  }, [projectsData, router]);
 
-  if (authLoading || !user) {
+  if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -101,6 +98,7 @@ export default function OnboardingPage() {
   };
 
   return (
+    <RequireAuth>
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       {step === "welcome" && (
         <Card className="w-full max-w-lg text-center">
@@ -278,5 +276,6 @@ export default function OnboardingPage() {
         </Card>
       )}
     </div>
+    </RequireAuth>
   );
 }

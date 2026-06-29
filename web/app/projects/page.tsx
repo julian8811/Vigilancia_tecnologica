@@ -52,6 +52,7 @@ import { toast } from "sonner";
 import type { Project, ProjectStatus } from "@/types/api";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { RequireAuth } from "@/components/auth/require-auth";
 
 const statusTabs: { label: string; value: ProjectStatus | "all" }[] = [
   { label: "Todos", value: "all" },
@@ -128,6 +129,7 @@ export default function ProjectsPage() {
   };
 
   return (
+    <RequireAuth>
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -366,5 +368,6 @@ export default function ProjectsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </RequireAuth>
   );
 }
