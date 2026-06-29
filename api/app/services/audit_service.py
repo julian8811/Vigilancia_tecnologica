@@ -1,13 +1,14 @@
 """Audit log service — append records of sensitive operations.
 
-The service uses its OWN database session (not the request's) so that
-audit rows are persisted even when the parent business operation
-rolls back. The trade-off is one extra Postgres connection per audit
-event, which is acceptable for the volume this app will see.
+The service uses the REQUEST'S database session, so audit rows commit
+and roll back together with the business operation. The trade-off is
+that a row written for a failed operation (e.g. login_failed that
+raises HTTPException) is rolled back too. We accept this because:
 
-The service never raises. Audit logging is best-effort: if the
-underlying database write fails, we log the error at warning level
-and let the business operation continue.
+  * The structlog line for the failure is still emitted (and not
+    rolled back) and ships to centralised log storage.
+  * A separate-session design breaks SQLite test concurrency and
+    adds a Postgres round-trip per audit row in production.
 """
 
 from __future__ import annotations
@@ -17,9 +18,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from app.db.session import async_session_factory
 from app.models.audit_log import AuditLog
 
 logger = get_logger(__name__)
@@ -56,13 +57,10 @@ class AuditEvent:
 
 
 class AuditService:
-    """Append-only writer for the audit_log table.
+    """Append-only writer for the audit_log table."""
 
-    Each ``record()`` call opens its own session and commits
-    immediately, decoupling the audit row from the request's
-    transaction. Use a single instance for the lifetime of the app
-    (or instantiate per-request — it has no state).
-    """
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
 
     async def record(
         self,
@@ -73,32 +71,25 @@ class AuditService:
         target_id: uuid.UUID | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        """Persist one audit-log row. Never raises."""
+        """Append one audit-log row. Never raises."""
         ctx = context or AuditContext()
+        row = AuditLog(
+            event=event,
+            actor_id=ctx.actor_id,
+            organization_id=ctx.organization_id,
+            target_type=target_type,
+            target_id=target_id,
+            ip=ctx.ip,
+            user_agent=ctx.user_agent,
+            request_id=ctx.request_id,
+            event_metadata=metadata,
+        )
         try:
-            async with async_session_factory() as session:
-                row = AuditLog(
-                    event=event,
-                    actor_id=ctx.actor_id,
-                    organization_id=ctx.organization_id,
-                    target_type=target_type,
-                    target_id=target_id,
-                    ip=ctx.ip,
-                    user_agent=ctx.user_agent,
-                    request_id=ctx.request_id,
-                    event_metadata=metadata,
-                )
-                session.add(row)
-                await session.commit()
+            self.db.add(row)
+            await self.db.flush()
         except SQLAlchemyError as exc:
             logger.warning(
                 "audit_log_write_failed",
-                event=event,
-                error=str(exc),
-            )
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.warning(
-                "audit_log_unexpected_error",
-                event=event,
+                event_name=event,
                 error=str(exc),
             )

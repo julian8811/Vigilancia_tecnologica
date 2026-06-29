@@ -29,7 +29,7 @@ class AuthService:
         # when the business transaction rolls back (e.g. login_failed
         # raises HTTPException, the parent tx rolls back, but the
         # login_failed audit row should still be recorded).
-        self.audit = AuditService()
+        self.audit = AuditService(db)
         self.audit_context = audit_context or AuditContext()
 
     async def register(self, request: RegisterRequest) -> TokenResponse:

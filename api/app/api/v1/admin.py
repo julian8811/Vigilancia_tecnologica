@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,8 @@ router = APIRouter(prefix="/admin", tags=["administración"])
 class AuditLogEntry(BaseModel):
     """Public shape of one audit-log row."""
 
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     id: uuid.UUID
     event: str
     actor_id: uuid.UUID | None
@@ -33,11 +35,8 @@ class AuditLogEntry(BaseModel):
     ip: str | None
     user_agent: str | None
     request_id: str | None
-    event_metadata: dict | None = Field(default=None, alias="metadata")
+    event_metadata: dict | None = None
     created_at: datetime
-
-    class Config:
-        populate_by_name = True
 
 
 class AuditLogListResponse(BaseModel):

@@ -61,7 +61,7 @@ class ProjectService:
     def __init__(self, db: AsyncSession, audit_context: AuditContext | None = None) -> None:
         self.db = db
         self.repo = ProjectRepository(db)
-        self.audit = AuditService()
+        self.audit = AuditService(db)
         self.audit_context = audit_context or AuditContext()
 
     async def create_project(self, schema: ProjectCreate, org_id: uuid.UUID, user_id: uuid.UUID) -> ProjectResponse:

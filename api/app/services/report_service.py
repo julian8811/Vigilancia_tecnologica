@@ -96,7 +96,7 @@ class ReportService:
     def __init__(self, db: AsyncSession, audit_context: AuditContext | None = None) -> None:
         self.db = db
         self.repo = ReportRepository(db)
-        self.audit = AuditService()
+        self.audit = AuditService(db)
         self.audit_context = audit_context or AuditContext()
 
     async def list_by_project(

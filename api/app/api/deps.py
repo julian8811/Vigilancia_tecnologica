@@ -130,29 +130,6 @@ def require_roles(*roles: str):
     return _role_checker
 
 
-async def get_audit_context(
-    request: Request,
-    current_user: User | None = Depends(get_current_user_optional),
-) -> AuditContext:
-    """Build an AuditContext from the inbound request.
-
-    Use as a dependency on every endpoint that triggers an audit
-    event. The context is cheap to build (no DB calls) and is
-    safe to pass by reference into services.
-
-    The actor_id is None for unauthenticated requests (login page,
-    register page). The organization_id is the actor's org when
-    authenticated.
-    """
-    return AuditContext(
-        actor_id=current_user.id if current_user else None,
-        organization_id=current_user.organization_id if current_user else None,
-        ip=(request.client.host if request.client else None),
-        user_agent=request.headers.get("user-agent"),
-        request_id=getattr(request.state, "request_id", None),
-    )
-
-
 async def get_current_user_optional(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -178,3 +155,26 @@ async def get_current_user_optional(
 
     repo = UserRepository(db)
     return await repo.get(user_id)
+
+
+async def get_audit_context(
+    request: Request,
+    current_user: User | None = Depends(get_current_user_optional),
+) -> AuditContext:
+    """Build an AuditContext from the inbound request.
+
+    Use as a dependency on every endpoint that triggers an audit
+    event. The context is cheap to build (no DB calls) and is
+    safe to pass by reference into services.
+
+    The actor_id is None for unauthenticated requests (login page,
+    register page). The organization_id is the actor's org when
+    authenticated.
+    """
+    return AuditContext(
+        actor_id=current_user.id if current_user else None,
+        organization_id=current_user.organization_id if current_user else None,
+        ip=(request.client.host if request.client else None),
+        user_agent=request.headers.get("user-agent"),
+        request_id=getattr(request.state, "request_id", None),
+    )

@@ -110,12 +110,23 @@ async def setup_database():
     """Create all tables before each test and drop them after.
 
     File-based SQLite ensures all connections share the same data.
+    Also redirects the production async_session_factory to the test
+    engine so AuditService (which uses its own session) writes to
+    the test DB.
     """
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+
+    import app.db.session as _db_session
+
+    original_factory = _db_session.async_session_factory
+    _db_session.async_session_factory = TestSessionFactory
+    try:
+        yield
+    finally:
+        _db_session.async_session_factory = original_factory
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
 
 
 # ---------------------------------------------------------------------------
