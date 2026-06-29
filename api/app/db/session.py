@@ -7,13 +7,27 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 
+
+def _connect_args() -> dict:
+    """Per-dialect connect_args.
+
+    ``statement_cache_size=0`` is asyncpg-only — it disables the
+    prepared-statement cache so PgBouncer and similar transaction-
+    pool proxies work. Other drivers (aiosqlite, etc.) reject the
+    kwarg.
+    """
+    if settings.DATABASE_URL.startswith("postgresql"):
+        return {"statement_cache_size": 0}
+    return {}
+
+
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.is_development,
     pool_size=10,
     max_overflow=20,
     pool_pre_ping=True,
-    connect_args={"statement_cache_size": 0},
+    connect_args=_connect_args(),
 )
 
 async_session_factory = async_sessionmaker(

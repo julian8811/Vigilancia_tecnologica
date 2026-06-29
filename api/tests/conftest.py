@@ -29,11 +29,21 @@ from typing import Any
 import pytest
 
 # ---------------------------------------------------------------------------
+# Build the test DATABASE_URL BEFORE any app imports so that
+# ``from app.main import app`` (which loads settings.DATABASE_URL) sees
+# the SQLite path, not the production Postgres default.
+# ---------------------------------------------------------------------------
+_db_fd, _db_path = tempfile.mkstemp(suffix=".db", prefix="vigilagraph_test_")
+TEST_DATABASE_URL = f"sqlite+aiosqlite:///{_db_path}"
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+os.environ.setdefault("JWT_SECRET", "test-secret-please-do-not-use-in-production")
+
+# ---------------------------------------------------------------------------
 # Make JSONB (PostgreSQL-only) work on SQLite by compiling it to standard
 # JSON.  This avoids model changes just for the test suite.
 # ---------------------------------------------------------------------------
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB  # noqa: E402
+from sqlalchemy.ext.compiler import compiles  # noqa: E402
 
 
 @compiles(JSONB, "sqlite")
@@ -41,21 +51,22 @@ def _compile_jsonb_sqlite(element, compiler, **kw):  # noqa: ARG001
     return compiler.visit_JSON(element, **kw)
 
 
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import NullPool
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+import pytest_asyncio  # noqa: E402
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy import NullPool  # noqa: E402
+from sqlalchemy.ext.asyncio import (  # noqa: E402
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
-from app.api.deps import get_current_active_user, get_db
-from app.db.base import Base
-from app.main import app
+from app.api.deps import get_current_active_user, get_db  # noqa: E402
+from app.db.base import Base  # noqa: E402
+from app.main import app  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Test database — file-based SQLite so every connection sees the same data.
 # ---------------------------------------------------------------------------
-
-_db_fd, _db_path = tempfile.mkstemp(suffix=".db", prefix="vigilagraph_test_")
-TEST_DATABASE_URL = f"sqlite+aiosqlite:///{_db_path}"
 
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
@@ -162,6 +173,7 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
     org_id = data["user"]["organization_id"]
 
     async def _override_current_user():
+        from fastapi import HTTPException
         from app.models.user import User
         from sqlalchemy import select
 
@@ -172,6 +184,11 @@ async def auth_headers(client: AsyncClient) -> dict[str, str]:
             user = result.scalar_one_or_none()
             if user is None:
                 raise RuntimeError(f"User {user_id} not found in DB")
+            # Mirror the real dependency: an is_active=False user is
+            # forbidden. Tests that toggle is_active mid-test (e.g.
+            # test_inactive_user_gets_403) rely on this.
+            if not user.is_active:
+                raise HTTPException(status_code=403, detail="Cuenta desactivada")
             return user
 
     app.dependency_overrides[get_current_active_user] = _override_current_user
