@@ -80,8 +80,7 @@ export default function SearchPage() {
       setResults(data.results || []);
       setSelectedDois(new Set());
     } catch (err: any) {
-      const msg = typeof err?.detail === "object" ? err.detail?.detail : err?.detail;
-      toast.error(msg || "Search failed");
+      toast.error(err?.detail || "Search failed");
       setResults([]);
     } finally {
       setSearching(false);

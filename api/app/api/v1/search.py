@@ -18,6 +18,7 @@ from structlog import get_logger
 
 from app.api.deps import get_current_active_user, get_db, require_min_role, verify_project_org
 from app.core.config import settings
+from app.core.errors import AppError
 from app.core.permissions import Role
 from app.models.user import User
 
@@ -75,11 +76,15 @@ def _connector_result_to_item(doc: dict, source: str) -> SearchResultItem:
     )
 
 
-def _user_error(status: int, detail: str, **extra) -> HTTPException:
-    """Return an HTTPException with a payload the SPA can show in a toast."""
-    body: dict[str, Any] = {"detail": detail}
-    body.update(extra)
-    return HTTPException(status_code=status, detail=body)
+class SearchError(AppError):
+    """Raised for user-visible search failures.
+
+    Inherits from ``AppError`` so the global app_error_handler
+    wraps it in ``{"detail": "..."}`` — the SPA reads ``err.detail``.
+    """
+
+    def __init__(self, status_code: int, detail: str) -> None:
+        super().__init__(status_code=status_code, detail=detail)
 
 
 # ── Preview endpoint ─────────────────────────────────────────────────
@@ -98,11 +103,10 @@ async def search_preview(
     import httpx
 
     if request.source not in _SEARCH_SOURCES:
-        raise _user_error(
+        raise SearchError(
             400,
             f"Fuente desconocida: '{request.source}'. "
             f"Usá una de: {', '.join(sorted(_SEARCH_SOURCES))}.",
-            supported=list(_SEARCH_SOURCES),
         )
 
     results: list[SearchResultItem] = []
@@ -133,12 +137,11 @@ async def search_preview(
 
         elif request.source == "lens":
             if not settings.LENS_API_TOKEN:
-                raise _user_error(
+                raise SearchError(
                     503,
                     "Lens.org no está configurado. "
-                    "Agregá LENS_API_TOKEN en las variables de entorno.",
-                    source="lens",
-                    hint="https://docs.lens.org/",
+                    "Agregá LENS_API_TOKEN en las variables de entorno del servicio Render. "
+                    "Más info: https://docs.lens.org/",
                 )
 
             from app.connectors.lens import LensConnector
@@ -158,44 +161,35 @@ async def search_preview(
         source = request.source
 
         if status == 429:
-            raise _user_error(
+            raise SearchError(
                 502,
                 f"{source} nos está frenando por exceso de consultas (HTTP 429). "
                 "Esperá unos segundos y volvé a intentar.",
-                source=source,
-                hint="rate_limited",
             )
         if status in (503, 504):
-            raise _user_error(
+            raise SearchError(
                 502,
                 f"{source} no está respondiendo (HTTP {status}). "
                 "Puede ser una caída temporal del servicio externo.",
-                source=source,
-                hint="upstream_unavailable",
             )
-        raise _user_error(
+        raise SearchError(
             502,
             f"Error al consultar {source} (HTTP {status}). "
             "El servicio externo devolvió un error inesperado.",
-            source=source,
         )
 
     except httpx.TimeoutException:
-        raise _user_error(
+        raise SearchError(
             502,
             f"{request.source} tardó demasiado en responder. "
             "Probá con una consulta más corta o con otra fuente.",
-            source=request.source,
-            hint="timeout",
         )
 
     except httpx.ConnectError:
-        raise _user_error(
+        raise SearchError(
             502,
             f"No se pudo conectar a {request.source}. "
             "Verificá tu conexión o intentá más tarde.",
-            source=request.source,
-            hint="connection_failed",
         )
 
     logger.info("search_preview_completed", source=request.source, total=len(results))
