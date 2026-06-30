@@ -176,7 +176,7 @@ async def search_preview(
         elif request.source == "arxiv":
             from app.connectors.arxiv import ArxivConnector
 
-            connector = ArxivConnector(timeout=30.0)
+            connector = ArxivConnector(timeout=45.0)
             try:
                 async for doc in connector.fetch(request.query, max_results=request.limit):
                     results.append(_connector_result_to_item(doc, "arxiv"))
