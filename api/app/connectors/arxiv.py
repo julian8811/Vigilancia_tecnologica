@@ -28,7 +28,7 @@ from app.connectors.base import BaseConnector
 logger = get_logger(__name__)
 
 BASE_URL = "https://export.arxiv.org/api/query"
-DEFAULT_TIMEOUT = 30.0
+DEFAULT_TIMEOUT = 45.0
 MAX_CONCURRENT = 1
 BATCH_SLEEP = 3.5  # arXiv polite pool: ≤ 1 req / 3 s
 MAX_RESULTS_PER_PAGE = 100

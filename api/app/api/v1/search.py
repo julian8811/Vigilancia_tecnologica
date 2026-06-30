@@ -229,6 +229,16 @@ async def search_preview(
             "Verificá tu conexión o intentá más tarde.",
         )
 
+    except SearchError:
+        raise
+
+    except Exception as exc:
+        logger.exception("search_preview_unexpected_error", source=request.source)
+        raise SearchError(
+            500,
+            f"Error inesperado al consultar {request.source}: {exc}",
+        )
+
     logger.info("search_preview_completed", source=request.source, total=len(results))
     return SearchPreviewResponse(
         results=results,
