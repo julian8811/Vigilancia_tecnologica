@@ -5,7 +5,8 @@ import type {
   DocumentListResponse,
 } from "@/types/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Use relative URLs so Next.js rewrites proxy /api/* to the backend.
+const API_URL = "";
 
 export function useDocuments(
   projectId: string,

@@ -10,7 +10,11 @@
 
 import { toast } from "sonner";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Use relative URLs so Next.js rewrites (next.config.js) proxy /api/*
+// to the real backend. This keeps requests same-origin: no CORS preflight,
+// no cross-site cookie issues (SameSite=Lax works), and the CSRF cookie
+// is always readable via document.cookie on the same domain.
+const BASE_URL = "";
 
 /** Name of the CSRF double-submit cookie. Must match the API. */
 const CSRF_COOKIE_NAME = "vg_csrf";

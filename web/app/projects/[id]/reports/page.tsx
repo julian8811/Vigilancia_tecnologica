@@ -180,7 +180,7 @@ export default function ReportsPage() {
                         {report.html_path && (
                           <Button variant="ghost" size="icon" asChild title="Ver HTML">
                             <a
-                              href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/projects/${projectId}/reports/${report.id}/download/html`}
+                              href={`/api/v1/projects/${projectId}/reports/${report.id}/download/html`}
                               target="_blank"
                             >
                               <FileText className="h-4 w-4" />
@@ -190,7 +190,7 @@ export default function ReportsPage() {
                         {report.pdf_path && (
                           <Button variant="ghost" size="icon" asChild title="Descargar PDF">
                             <a
-                              href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/projects/${projectId}/reports/${report.id}/download/pdf`}
+                              href={`/api/v1/projects/${projectId}/reports/${report.id}/download/pdf`}
                               download
                             >
                               <FileDown className="h-4 w-4" />
@@ -200,7 +200,7 @@ export default function ReportsPage() {
                         {report.markdown_path && (
                           <Button variant="ghost" size="icon" asChild title="Descargar Markdown">
                             <a
-                              href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/projects/${projectId}/reports/${report.id}/download/markdown`}
+                              href={`/api/v1/projects/${projectId}/reports/${report.id}/download/markdown`}
                               download
                             >
                               <FileCode2 className="h-4 w-4" />
