@@ -1,4 +1,10 @@
-"""Search router — preview external sources and import results."""
+"""Search router — preview external sources and import results.
+
+Uses the connector layer (app/connectors/) for all external API calls so
+retries, rate-limit backoff, and polite-pool behaviour are applied
+consistently.  The previous implementation made raw httpx calls that
+lacked retries and surfaced cryptic 429/504 exceptions to users.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +25,10 @@ logger = get_logger(__name__)
 router = APIRouter(tags=["búsqueda"])
 
 _require_analyst = require_min_role(Role.ANALYST)
+
+# ── Sources supported by the search preview ─────────────────────────
+
+_SEARCH_SOURCES = frozenset({"openalex", "semantic_scholar", "lens"})
 
 
 class SearchPreviewRequest(BaseModel):
@@ -41,11 +51,38 @@ class SearchResultItem(BaseModel):
 class SearchPreviewResponse(BaseModel):
     results: list[SearchResultItem]
     total: int
+    source: str = ""
 
 
 class CollectFromSearchRequest(BaseModel):
     results: list[dict[str, Any]]
     source: str = "openalex"
+
+
+# ── Helpers ──────────────────────────────────────────────────────────
+
+
+def _connector_result_to_item(doc: dict, source: str) -> SearchResultItem:
+    """Map a connector-normalised dict to a SearchResultItem."""
+    return SearchResultItem(
+        title=doc.get("title", ""),
+        authors=doc.get("authors") or [],
+        year=doc.get("publication_year"),
+        doi=doc.get("doi"),
+        source=source,
+        abstract=doc.get("abstract"),
+        url=doc.get("url"),
+    )
+
+
+def _user_error(status: int, detail: str, **extra) -> HTTPException:
+    """Return an HTTPException with a payload the SPA can show in a toast."""
+    body: dict[str, Any] = {"detail": detail}
+    body.update(extra)
+    return HTTPException(status_code=status, detail=body)
+
+
+# ── Preview endpoint ─────────────────────────────────────────────────
 
 
 @router.post("/search/preview", response_model=SearchPreviewResponse)
@@ -54,73 +91,122 @@ async def search_preview(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_require_analyst),
 ) -> SearchPreviewResponse:
-    """Preview search results. Analyst+."""
+    """Preview search results from external sources. Analyst+.
+
+    Supported *source* values: ``openalex``, ``semantic_scholar``, ``lens``.
+    """
     import httpx
+
+    if request.source not in _SEARCH_SOURCES:
+        raise _user_error(
+            400,
+            f"Fuente desconocida: '{request.source}'. "
+            f"Usá una de: {', '.join(sorted(_SEARCH_SOURCES))}.",
+            supported=list(_SEARCH_SOURCES),
+        )
 
     results: list[SearchResultItem] = []
 
     try:
         if request.source == "openalex":
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.get(
-                    "https://api.openalex.org/works",
-                    params={
-                        "search": request.query,
-                        "per_page": min(request.limit, 50),
-                        "sort": "relevance_score:desc",
-                    },
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            from app.connectors.openalex import OpenAlexConnector
 
-                for work in data.get("results", [])[: request.limit]:
-                    authors = []
-                    for a in work.get("authorships") or []:
-                        author = a.get("author") or {}
-                        if author.get("display_name"):
-                            authors.append(author["display_name"])
-
-                    results.append(SearchResultItem(
-                        title=work.get("title", ""),
-                        authors=authors,
-                        year=work.get("publication_year"),
-                        doi=work.get("doi"),
-                        source="openalex",
-                        abstract=work.get("abstract", ""),
-                        url=work.get("doi") or "",
-                    ))
+            connector = OpenAlexConnector(timeout=30.0)
+            try:
+                async for doc in connector.fetch(request.query, max_results=request.limit):
+                    results.append(_connector_result_to_item(doc, "openalex"))
+            finally:
+                await connector.close()
 
         elif request.source == "semantic_scholar":
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.get(
-                    "https://api.semanticscholar.org/graph/v1/paper/search",
-                    params={
-                        "query": request.query,
-                        "limit": min(request.limit, 50),
-                        "fields": "title,authors,year,externalIds",
-                    },
+            from app.connectors.semantic_scholar import SemanticScholarConnector
+
+            connector = SemanticScholarConnector(
+                api_key=settings.SEMANTIC_SCHOLAR_API_KEY or None,
+                timeout=30.0,
+            )
+            try:
+                async for doc in connector.fetch(request.query, max_results=request.limit):
+                    results.append(_connector_result_to_item(doc, "semantic_scholar"))
+            finally:
+                await connector.close()
+
+        elif request.source == "lens":
+            if not settings.LENS_API_TOKEN:
+                raise _user_error(
+                    503,
+                    "Lens.org no está configurado. "
+                    "Agregá LENS_API_TOKEN en las variables de entorno.",
+                    source="lens",
+                    hint="https://docs.lens.org/",
                 )
-                resp.raise_for_status()
-                data = resp.json()
 
-                for paper in data.get("data", [])[: request.limit]:
-                    authors = [a.get("name", "") for a in paper.get("authors") or [] if a.get("name")]
-                    ext_ids = paper.get("externalIds") or {}
-                    results.append(SearchResultItem(
-                        title=paper.get("title", ""),
-                        authors=authors,
-                        year=paper.get("year"),
-                        doi=ext_ids.get("doi"),
-                        source="semantic_scholar",
-                        url=f"https://www.semanticscholar.org/paper/{paper.get('paperId', '')}",
-                    ))
+            from app.connectors.lens import LensConnector
 
-    except Exception as exc:
-        logger.error("search_preview_failed", source=request.source, error=str(exc))
-        raise HTTPException(status_code=502, detail=f"Búsqueda fallida: {exc}")
+            connector = LensConnector(
+                api_token=settings.LENS_API_TOKEN,
+                timeout=60.0,
+            )
+            try:
+                async for doc in connector.fetch(request.query, max_results=request.limit):
+                    results.append(_connector_result_to_item(doc, "lens"))
+            finally:
+                await connector.close()
+
+    except httpx.HTTPStatusError as exc:
+        status = exc.response.status_code
+        source = request.source
+
+        if status == 429:
+            raise _user_error(
+                502,
+                f"{source} nos está frenando por exceso de consultas (HTTP 429). "
+                "Esperá unos segundos y volvé a intentar.",
+                source=source,
+                hint="rate_limited",
+            )
+        if status in (503, 504):
+            raise _user_error(
+                502,
+                f"{source} no está respondiendo (HTTP {status}). "
+                "Puede ser una caída temporal del servicio externo.",
+                source=source,
+                hint="upstream_unavailable",
+            )
+        raise _user_error(
+            502,
+            f"Error al consultar {source} (HTTP {status}). "
+            "El servicio externo devolvió un error inesperado.",
+            source=source,
+        )
+
+    except httpx.TimeoutException:
+        raise _user_error(
+            502,
+            f"{request.source} tardó demasiado en responder. "
+            "Probá con una consulta más corta o con otra fuente.",
+            source=request.source,
+            hint="timeout",
+        )
+
+    except httpx.ConnectError:
+        raise _user_error(
+            502,
+            f"No se pudo conectar a {request.source}. "
+            "Verificá tu conexión o intentá más tarde.",
+            source=request.source,
+            hint="connection_failed",
+        )
 
     logger.info("search_preview_completed", source=request.source, total=len(results))
-    return SearchPreviewResponse(results=results, total=len(results))
+    return SearchPreviewResponse(
+        results=results,
+        total=len(results),
+        source=request.source,
+    )
+
+
+# ── Collect endpoint ─────────────────────────────────────────────────
 
 
 @router.post("/projects/{project_id}/collect-from-search", status_code=201)

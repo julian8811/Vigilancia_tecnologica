@@ -80,7 +80,8 @@ export default function SearchPage() {
       setResults(data.results || []);
       setSelectedDois(new Set());
     } catch (err: any) {
-      toast.error(err?.detail || "Search failed");
+      const msg = typeof err?.detail === "object" ? err.detail?.detail : err?.detail;
+      toast.error(msg || "Search failed");
       setResults([]);
     } finally {
       setSearching(false);
@@ -153,6 +154,7 @@ export default function SearchPage() {
               <SelectContent>
                 <SelectItem value="openalex">OpenAlex</SelectItem>
                 <SelectItem value="semantic_scholar">Semantic Scholar</SelectItem>
+                <SelectItem value="lens">Lens.org (patents)</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={handleSearch} disabled={searching} className="flex-1">
