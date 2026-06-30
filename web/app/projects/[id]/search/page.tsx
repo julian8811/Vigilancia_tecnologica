@@ -152,7 +152,10 @@ export default function SearchPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="openalex">OpenAlex</SelectItem>
+                <SelectItem value="crossref">Crossref</SelectItem>
                 <SelectItem value="semantic_scholar">Semantic Scholar</SelectItem>
+                <SelectItem value="arxiv">arXiv</SelectItem>
+                <SelectItem value="europe_pmc">Europe PMC</SelectItem>
                 <SelectItem value="lens">Lens.org (patents)</SelectItem>
               </SelectContent>
             </Select>

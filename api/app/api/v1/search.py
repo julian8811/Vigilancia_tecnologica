@@ -29,7 +29,14 @@ _require_analyst = require_min_role(Role.ANALYST)
 
 # ── Sources supported by the search preview ─────────────────────────
 
-_SEARCH_SOURCES = frozenset({"openalex", "semantic_scholar", "lens"})
+_SEARCH_SOURCES = frozenset({
+    "openalex",
+    "semantic_scholar",
+    "lens",
+    "crossref",
+    "arxiv",
+    "europe_pmc",
+})
 
 
 class SearchPreviewRequest(BaseModel):
@@ -153,6 +160,36 @@ async def search_preview(
             try:
                 async for doc in connector.fetch(request.query, max_results=request.limit):
                     results.append(_connector_result_to_item(doc, "lens"))
+            finally:
+                await connector.close()
+
+        elif request.source == "crossref":
+            from app.connectors.crossref import CrossrefConnector
+
+            connector = CrossrefConnector(timeout=30.0)
+            try:
+                async for doc in connector.fetch(request.query, max_results=request.limit):
+                    results.append(_connector_result_to_item(doc, "crossref"))
+            finally:
+                await connector.close()
+
+        elif request.source == "arxiv":
+            from app.connectors.arxiv import ArxivConnector
+
+            connector = ArxivConnector(timeout=30.0)
+            try:
+                async for doc in connector.fetch(request.query, max_results=request.limit):
+                    results.append(_connector_result_to_item(doc, "arxiv"))
+            finally:
+                await connector.close()
+
+        elif request.source == "europe_pmc":
+            from app.connectors.europe_pmc import EuropePMCConnector
+
+            connector = EuropePMCConnector(timeout=30.0)
+            try:
+                async for doc in connector.fetch(request.query, max_results=request.limit):
+                    results.append(_connector_result_to_item(doc, "europe_pmc"))
             finally:
                 await connector.close()
 
